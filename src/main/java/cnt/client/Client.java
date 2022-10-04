@@ -9,8 +9,12 @@ public class Client {
     ObjectInputStream in;          //stream read from the socket
     String message;                //message send to the server
     String MESSAGE;                //capitalized message read from the server
+    String id;
 
-    public void Client() {
+    final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
+
+    public Client(String id) {
+        this.id = id;
     }
 
     void run() {
@@ -25,17 +29,34 @@ public class Client {
 
             //get Input from standard input
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
-            while (true) {
-                System.out.print("Hello, please input a sentence: ");
-                //read a sentence from the standard input
-                message = bufferedReader.readLine();
-                //Send the sentence to the server
-                sendMessage(message);
+
+            // Create the handshake message with a char array
+            char handshake[] = new char[HANDSHAKE_HEADER.length() + 10 + id.length()];
+
+            int offset = 0; // keep track of offset in further loops
+            for (int i = 0; i < HANDSHAKE_HEADER.length(); i++) {
+                handshake[i] = HANDSHAKE_HEADER.charAt(i);
+            }
+            offset += HANDSHAKE_HEADER.length();
+
+            // Pad handshake message with 10 0 bytes
+            for(int i = 0; i < 10; i++) {
+                handshake[offset+i] = 0;
+            }
+            offset += 10;
+
+            // Put ID at end of handshake
+            for(int i = 0; i < id.length(); i++) {
+                handshake[offset+i] = id.charAt(i);
+            }
+
+            //while (true) {
+                sendMessage(new String(handshake));
                 //Receive the upperCase sentence from the server
                 MESSAGE = (String) in.readObject();
                 //show the message to the user
                 System.out.println("Receive message: " + MESSAGE);
-            }
+            //}
         } catch (ConnectException e) {
             System.err.println("Connection refused. You need to initiate a server first.");
         } catch (ClassNotFoundException e) {
@@ -69,8 +90,16 @@ public class Client {
 
     //main method
     public static void main(String args[]) {
-        Client client = new Client();
-        client.run();
+        if(args.length == 0) {
+            System.out.println("Must be supplied ID as argument.");
+        }
+        else if (args[0].length() != 4) {
+            System.out.println("ID must be 4 characters long.");
+        }
+        else {
+            Client client = new Client(args[0]);
+            client.run();
+        }
     }
 
 }
