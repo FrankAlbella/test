@@ -50,13 +50,20 @@ public class Client {
                 handshake[offset+i] = id.charAt(i);
             }
 
-            //while (true) {
-                sendMessage(new String(handshake));
-                //Receive the upperCase sentence from the server
-                MESSAGE = (String) in.readObject();
-                //show the message to the user
-                System.out.println("Receive message: " + MESSAGE);
-            //}
+            message = new String(handshake);
+            // Send server handshake
+            sendMessage(message);
+            // Ger handshake from server
+            MESSAGE = (String) in.readObject();
+            //show the message to the user
+            if(MESSAGE.equals(message)) {
+                System.out.println("HANDSHAKES MATCH: " + MESSAGE);
+            }
+            else {
+                System.out.println("HANDSHAKES DO NOT MATCH:");
+                System.out.println("\tExpected: " + message);
+                System.out.println("\tReceived: " + MESSAGE);
+            }
         } catch (ConnectException e) {
             System.err.println("Connection refused. You need to initiate a server first.");
         } catch (ClassNotFoundException e) {
