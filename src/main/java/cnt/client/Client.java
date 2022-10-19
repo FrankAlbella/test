@@ -30,30 +30,10 @@ public class Client {
             //get Input from standard input
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
 
-            // Create the handshake message with a char array
-            char handshake[] = new char[HANDSHAKE_HEADER.length() + 10 + id.length()];
-
-            int offset = 0; // keep track of offset in further loops
-            for (int i = 0; i < HANDSHAKE_HEADER.length(); i++) {
-                handshake[i] = HANDSHAKE_HEADER.charAt(i);
-            }
-            offset += HANDSHAKE_HEADER.length();
-
-            // Pad handshake message with 10 0 bytes
-            for(int i = 0; i < 10; i++) {
-                handshake[offset+i] = 0;
-            }
-            offset += 10;
-
-            // Put ID at end of handshake
-            for(int i = 0; i < id.length(); i++) {
-                handshake[offset+i] = id.charAt(i);
-            }
-
-            message = new String(handshake);
-            // Send server handshake
+            // create handshake message and send to server
+            createHandshakeMessage();
             sendMessage(message);
-            // Ger handshake from server
+            // Get handshake from server
             MESSAGE = (String) in.readObject();
             //show the message to the user
             if(MESSAGE.equals(message)) {
@@ -93,6 +73,30 @@ public class Client {
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
+    }
+
+    // create handshake message
+    void createHandshakeMessage(){
+        // Create the handshake message with a char array
+        char handshake[] = new char[HANDSHAKE_HEADER.length() + 10 + id.length()];
+
+        int offset = 0; // keep track of offset in further loops
+        for (int i = 0; i < HANDSHAKE_HEADER.length(); i++) {
+            handshake[i] = HANDSHAKE_HEADER.charAt(i);
+        }
+        offset += HANDSHAKE_HEADER.length();
+
+        // Pad handshake message with 10 0 bytes
+        for(int i = 0; i < 10; i++) {
+            handshake[offset+i] = 0;
+        }
+        offset += 10;
+
+        // Put ID at end of handshake
+        for(int i = 0; i < id.length(); i++) {
+            handshake[offset+i] = id.charAt(i);
+        }
+        message = new String(handshake);
     }
 
     //main method
