@@ -60,6 +60,8 @@ public class Server {
                         message = (String) in.readObject();
                         receiveHandshake(message);
 
+                        // TODO: send peers to server
+
 
                         // create other if-else statements depending on what client sent
 

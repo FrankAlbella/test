@@ -2,6 +2,9 @@ package src.main.java.cnt.client;
 
 import java.net.*;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.zip.GZIPInputStream;
+import src.main.java.cnt.protocol.Handshake;
 
 public class Client {
     Socket requestSocket;           //socket connect to the server
@@ -11,7 +14,10 @@ public class Client {
     String MESSAGE;                //capitalized message read from the server
     String id;
 
+    Handshake handshakeMessage = new Handshake();
+
     final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
+    private ArrayList<String> clientList = new ArrayList<String>();
 
     public Client(String id) {
         this.id = id;
@@ -31,8 +37,11 @@ public class Client {
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
 
             // create handshake message and send to server
-            createHandshakeMessage();
+            handshakeMessage.createHandshakeMessage(id);
+            message = handshakeMessage.getHandshake();
             sendMessage(message);
+
+            // TODO: validate the handshake, if not throw an error?
             // Get handshake from server
             MESSAGE = (String) in.readObject();
             //show the message to the user
@@ -99,6 +108,12 @@ public class Client {
         message = new String(handshake);
     }
 
+    // get peers
+    void getPeers(){
+        //ObjectInputStream objectInput = new ObjectInputStream(new InputStream(in));
+        //ArrayList<type> a = objectInput.readObject();
+        // TODO: figure out how to send array of Strings
+    }
     //main method
     public static void main(String args[]) {
         if(args.length == 0) {
@@ -108,6 +123,7 @@ public class Client {
             System.out.println("ID must be 4 characters long.");
         }
         else {
+            System.out.println("Running the client: " + args[0]);
             Client client = new Client(args[0]);
             client.run();
         }
