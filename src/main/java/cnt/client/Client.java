@@ -84,36 +84,6 @@ public class Client {
         }
     }
 
-    // create handshake message
-    void createHandshakeMessage(){
-        // Create the handshake message with a char array
-        char handshake[] = new char[HANDSHAKE_HEADER.length() + 10 + id.length()];
-
-        int offset = 0; // keep track of offset in further loops
-        for (int i = 0; i < HANDSHAKE_HEADER.length(); i++) {
-            handshake[i] = HANDSHAKE_HEADER.charAt(i);
-        }
-        offset += HANDSHAKE_HEADER.length();
-
-        // Pad handshake message with 10 0 bytes
-        for(int i = 0; i < 10; i++) {
-            handshake[offset+i] = 0;
-        }
-        offset += 10;
-
-        // Put ID at end of handshake
-        for(int i = 0; i < id.length(); i++) {
-            handshake[offset+i] = id.charAt(i);
-        }
-        message = new String(handshake);
-    }
-
-    // get peers
-    void getPeers(){
-        //ObjectInputStream objectInput = new ObjectInputStream(new InputStream(in));
-        //ArrayList<type> a = objectInput.readObject();
-        // TODO: figure out how to send array of Strings
-    }
     //main method
     public static void main(String args[]) {
         if(args.length == 0) {
