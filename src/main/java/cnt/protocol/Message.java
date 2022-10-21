@@ -15,7 +15,7 @@ public class Message {
     Type type;
     byte[] payload;
 
-    Message(int length, Type type, byte[] payload) {
+    public Message(int length, Type type, byte[] payload) {
         this.length = length;
         this.type = type;
         this.payload = payload;
