@@ -19,21 +19,23 @@ public class peerProcess {
         Hashtable <Integer, Peer> peers = new Hashtable<Integer, Peer>();
 
         Scanner scanner = new Scanner(configFile);
+        try {
+            while (scanner.hasNextLine()) {
+                String text = scanner.nextLine();
+                String[] peerVars = text.split("\\s+");
 
-        while (scanner.hasNextLine()){
-            String text = scanner.nextLine();
-            String [] peerVars = text.split(" ");
+                Peer peer = new Peer();
 
-            Peer peer = new Peer();
+                peer.peerData(Integer.parseInt(peerVars[0]), peerVars[1], Integer.parseInt(peerVars[2]), Integer.parseInt(peerVars[3]));
+                peers.put(peer.peerID, peer);
 
-            peer.peerData(Integer.parseInt(peerVars[0]), peerVars[1], Integer.parseInt(peerVars[2]),Integer.parseInt(peerVars[3]));
-            peers.put(peer.peerID, peer);
+            }
+        } catch (Exception e){
 
         }
 
         scanner.close();
 
     }
-
 
 }
