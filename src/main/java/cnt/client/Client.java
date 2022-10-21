@@ -42,7 +42,6 @@ public class Client {
             message = handshakeMessage.getHandshake();
             sendMessage(message);
 
-            // TODO: validate the handshake, if not throw an error?
             // Get handshake from server
             MESSAGE = (String) in.readObject();
             //show the message to the user
@@ -53,6 +52,7 @@ public class Client {
                 System.out.println("HANDSHAKES DO NOT MATCH:");
                 System.out.println("\tExpected: " + message);
                 System.out.println("\tReceived: " + MESSAGE);
+                throw new Exception("Handshake received from server does not match.");
             }
         } catch (ConnectException e) {
             System.err.println("Connection refused. You need to initiate a server first.");
@@ -62,6 +62,8 @@ public class Client {
             System.err.println("You are trying to connect to an unknown host!");
         } catch (IOException ioException) {
             ioException.printStackTrace();
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
         } finally {
             //Close connections
             try {
