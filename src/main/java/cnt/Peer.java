@@ -1,43 +1,35 @@
 package src.main.java.cnt;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.Scanner;
-
 public class Peer {
 
     public int peerID;
     public String hostName;
     public int portNumber;
-    public int includeFile;
 
     public boolean hasFile;
 
+    public int includeFile;
     public int numOfPreferredNeighbors;
     public int unchokingInterval;
     public int optimisticUnchokingInterval;
     public String fileName;
     public long fileSize;
     public int pieceSize;
-    public int countPieces;
+
+//    public Peer (int numOfPreferredNeighbors, int unchokingInterval, int optimisticUnchokingInterval, String fileName, int fileSize, int pieceSize) {
+//        this.numOfPreferredNeighbors = numOfPreferredNeighbors;
+//        this.unchokingInterval = unchokingInterval;
+//        this.optimisticUnchokingInterval = optimisticUnchokingInterval;
+//        this.fileName = fileName;
+//        this.fileSize = fileSize;
+//        this.pieceSize = pieceSize;
+//    }
 
 
-    public Peer () throws FileNotFoundException{
-        this.numOfPreferredNeighbors = 0;
-        this.unchokingInterval = 0;
-        this.optimisticUnchokingInterval = 0;
-        this.fileName = "";
-        this.fileSize = 0;
-        this.pieceSize = 0;
-        this.countPieces = 0;
-    }
-
-
-    public boolean peerData(int peerID, String hostName, int portNumber, int includeFile){
+    public boolean peerData(int peerID, String hostName, int portNumber, int hasFile){
         this.peerID = peerID;
         this.hostName = hostName;
         this.portNumber = portNumber;
-        this.includeFile = includeFile;
 
         if (includeFile == 1){
             //Complete Field, Set all the bits of bitfield to 1
