@@ -3,7 +3,9 @@ package src.main.java.cnt.client;
 import java.net.*;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Properties;
 import java.util.zip.GZIPInputStream;
+
 import src.main.java.cnt.protocol.Handshake;
 import src.main.java.cnt.protocol.Message;
 
@@ -15,13 +17,31 @@ public class Client {
     String MESSAGE;                //capitalized message read from the server
     String id;
 
+    // From common.cfg
+    int numPreferredNeighbors;
+    int unchokingInterval;
+    int optimisticUnchokingInterval;
+    byte[] bitfield;
+
+    boolean hasFile;
+
     Handshake handshakeMessage = new Handshake();
 
     final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
     private ArrayList<String> clientList = new ArrayList<String>();
 
-    public Client(String id) {
+    public Client(String id, int numPreferredNeighbors, int unchokingInterval, int optimisticUnchokingInterval, int bitfieldLength, boolean hasFile) {
         this.id = id;
+        this.numPreferredNeighbors = numPreferredNeighbors;
+        this.unchokingInterval = unchokingInterval;
+        this.optimisticUnchokingInterval = optimisticUnchokingInterval;
+        this.hasFile = hasFile;
+        bitfield = new byte[bitfieldLength];
+
+
+        if(hasFile)
+            for (int i = 0; i < bitfieldLength; i++)
+                bitfield[i] = 1;
     }
 
     void run() {
@@ -45,14 +65,18 @@ public class Client {
             // Get handshake from server
             MESSAGE = (String) in.readObject();
             //show the message to the user
-            if(MESSAGE.equals(message)) {
+            if (MESSAGE.equals(message)) {
                 System.out.println("HANDSHAKES MATCH: " + MESSAGE);
-            }
-            else {
+            } else {
                 System.out.println("HANDSHAKES DO NOT MATCH:");
                 System.out.println("\tExpected: " + message);
                 System.out.println("\tReceived: " + MESSAGE);
                 throw new Exception("Handshake received from server does not match.");
+            }
+
+            // Send bitfield message if it has any
+            if (hasFile) {
+                sendMessage(new Message(bitfield.length, Message.Type.BITFIELD, bitfield));
             }
         } catch (ConnectException e) {
             System.err.println("Connection refused. You need to initiate a server first.");
@@ -100,17 +124,54 @@ public class Client {
 
     //main method
     public static void main(String args[]) {
-        if(args.length == 0) {
-            System.out.println("Must be supplied ID as argument.");
+        if (args.length == 0) {
+            System.err.println("Must be supplied ID as argument.");
+            System.exit(1);
+        } else if (args[0].length() != 4) {
+            System.err.println("ID must be 4 characters long.");
+            System.exit(1);
         }
-        else if (args[0].length() != 4) {
-            System.out.println("ID must be 4 characters long.");
+
+        boolean hasFile = false;
+        if (args.length > 1 && args[1] == "1") {
+            hasFile = true;
         }
-        else {
-            System.out.println("Running the client: " + args[0]);
-            Client client = new Client(args[0]);
-            client.run();
+
+        System.out.println("Reading Common.cfg...");
+
+        Properties prop = new Properties();
+
+        try (FileInputStream fs = new FileInputStream("Common.cfg")) {
+            prop.load(fs);
+        } catch (FileNotFoundException ex) {
+            System.err.println("Common.cfg not found！");
+            System.exit(2);
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+            System.exit(2);
         }
+
+        int bitfieldLength = 0;
+
+        double fileSize = Double.parseDouble(prop.getProperty("FileSize"));
+        double pieceSize = Double.parseDouble(prop.getProperty("PieceSize"));
+
+        // each element in the byte array has 4 bits, therefore we pieceSize*4
+        bitfieldLength = (int)Math.ceil(fileSize / (pieceSize * 4));
+
+        int numNeighbors = Integer.parseInt(prop.getProperty("NumberOfPreferredNeighbors"));
+        int unchokingInterval = Integer.parseInt(prop.getProperty("UnchokingInterval"));
+        int optimisticUnchoke = Integer.parseInt(prop.getProperty("OptimisticUnchokingInterval"));
+
+        System.out.println("Running the client: " + args[0]);
+        Client client = new Client(args[0],
+                numNeighbors,
+                unchokingInterval,
+                optimisticUnchoke,
+                bitfieldLength,
+                hasFile);
+        client.run();
+
     }
 
 }
