@@ -24,6 +24,7 @@ public class Client {
     byte[] bitfield;
 
     boolean hasFile;
+    boolean hasDownloadStarted;
 
     Handshake handshakeMessage = new Handshake();
 
@@ -36,6 +37,7 @@ public class Client {
         this.unchokingInterval = unchokingInterval;
         this.optimisticUnchokingInterval = optimisticUnchokingInterval;
         this.hasFile = hasFile;
+        this.hasDownloadStarted = hasFile;
         bitfield = new byte[bitfieldLength];
 
 
@@ -75,7 +77,7 @@ public class Client {
             }
 
             // Send bitfield message if it has any
-            if (hasFile) {
+            if (hasDownloadStarted) {
                 sendMessage(new Message(bitfield.length, Message.Type.BITFIELD, bitfield));
             }
         } catch (ConnectException e) {
