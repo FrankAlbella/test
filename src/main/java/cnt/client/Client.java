@@ -64,17 +64,9 @@ public class Client {
             message = handshakeMessage.getHandshake();
             sendMessage(message);
 
-            // Get handshake from server
+            // Get handshake from server (or peer), and validate it
             MESSAGE = (String) in.readObject();
-            //show the message to the user
-            if (MESSAGE.equals(message)) {
-                System.out.println("HANDSHAKES MATCH: " + MESSAGE);
-            } else {
-                System.out.println("HANDSHAKES DO NOT MATCH:");
-                System.out.println("\tExpected: " + message);
-                System.out.println("\tReceived: " + MESSAGE);
-                throw new Exception("Handshake received from server does not match.");
-            }
+            handshakeMessage.validateHandshake(MESSAGE, message);
 
             // Send bitfield message if it has any
             if (hasDownloadStarted) {
@@ -139,8 +131,8 @@ public class Client {
             hasFile = true;
         }
 
+        // read the common.cfg file and set variables
         System.out.println("Reading Common.cfg...");
-
         Properties prop = new Properties();
 
         try (FileInputStream fs = new FileInputStream("Common.cfg")) {

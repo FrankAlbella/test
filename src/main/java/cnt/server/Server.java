@@ -58,10 +58,9 @@ public class Server {
                     while (true) {
                         //receive the message sent from the client, check if handshake
                         message = (String) in.readObject();
-                        receiveHandshake(message);
+                        serverReceiveHandshake(message);
 
                         // TODO: send peers to server
-
 
                         // create other if-else statements depending on what client sent
 
@@ -95,7 +94,7 @@ public class Server {
         }
 
         // do handshake, removes or adds peers to network, tracks them
-        public void receiveHandshake(String message){
+        public void serverReceiveHandshake(String message){
             String isHandshake = message.substring(0,18);
             // if client sent handshake
             if(isHandshake.compareTo(handshake) == 0){

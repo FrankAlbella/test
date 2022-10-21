@@ -2,6 +2,7 @@ package src.main.java.cnt.protocol;
 
 import java.net.*;
 import java.io.*;
+import java.util.ArrayList;
 
 public class Handshake {
     final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
@@ -39,4 +40,16 @@ public class Handshake {
         handshakeMesage = new String(handshake);
     }
 
+    // validates the handshake from the server
+    public void validateHandshake(String serverMessage, String clientHandshake) throws Exception {
+        if(serverMessage.equals(clientHandshake)) {
+            System.out.println("HANDSHAKES MATCH: " + serverMessage);
+        }
+        else {
+            System.out.println("HANDSHAKES DO NOT MATCH:");
+            System.out.println("\tExpected: " + clientHandshake);
+            System.out.println("\tReceived: " + serverMessage);
+            throw new Exception("Handshake received from server does not match.");
+        }
+    }
 }
