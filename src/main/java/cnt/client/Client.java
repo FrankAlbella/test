@@ -5,6 +5,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.zip.GZIPInputStream;
 import src.main.java.cnt.protocol.Handshake;
+import src.main.java.cnt.protocol.Message;
 
 public class Client {
     Socket requestSocket;           //socket connect to the server
@@ -75,6 +76,17 @@ public class Client {
 
     //send a message to the output stream
     void sendMessage(String msg) {
+        try {
+            //stream write the message
+            out.writeObject(msg);
+            out.flush();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+    }
+
+    //send a message using the message object
+    void sendMessage(Message msg) {
         try {
             //stream write the message
             out.writeObject(msg);
