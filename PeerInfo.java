@@ -1,3 +1,5 @@
+package BitTorrent;
+
 public class PeerInfo implements Cloneable{
 
     private int peerID;

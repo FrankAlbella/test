@@ -1,4 +1,4 @@
-package src.main.java.cnt.client;
+package BitTorrent.src.main.java.cnt.client;
 
 import java.net.*;
 import java.io.*;
@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.Properties;
 import java.util.zip.GZIPInputStream;
 
-import src.main.java.cnt.protocol.Handshake;
-import src.main.java.cnt.protocol.Message;
+import BitTorrent.src.main.java.cnt.protocol.Handshake;
+import BitTorrent.src.main.java.cnt.protocol.Message;
 
 public class Client {
     Socket requestSocket;           //socket connect to the server

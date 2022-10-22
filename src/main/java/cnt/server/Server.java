@@ -1,4 +1,4 @@
-package src.main.java.cnt.server;
+package BitTorrent.src.main.java.cnt.server;
 
 import java.net.*;
 import java.io.*;
