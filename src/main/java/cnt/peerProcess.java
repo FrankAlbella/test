@@ -1,5 +1,6 @@
-package src.main.java.cnt;
+package BitTorrent.src.main.java.cnt;
 
+import BitTorrent.src.main.java.cnt.Peer;
 import com.sun.nio.sctp.PeerAddressChangeNotification;
 
 import java.io.File;
@@ -19,6 +20,7 @@ public class peerProcess {
         Hashtable <Integer, Peer> peers = new Hashtable<Integer, Peer>();
 
         Scanner scanner = new Scanner(configFile);
+
         try {
             while (scanner.hasNextLine()) {
                 String text = scanner.nextLine();
@@ -30,6 +32,7 @@ public class peerProcess {
                 peers.put(peer.peerID, peer);
 
             }
+
         } catch (Exception e){
 
         }

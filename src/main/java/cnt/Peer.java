@@ -1,4 +1,4 @@
-package src.main.java.cnt;
+package BitTorrent.src.main.java.cnt;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -109,7 +109,7 @@ public class Peer {
 //    }
 
 
-    public boolean peerData(int peerID, String hostName, int portNumber, int hasFile){
+    public boolean peerData(int peerID, String hostName, int portNumber, int hasFile) throws FileNotFoundException {
         this.peerID = peerID;
         this.hostName = hostName;
         this.portNumber = portNumber;
@@ -121,6 +121,8 @@ public class Peer {
             //Field is 0, sets all bits of bitfield to 0
             this.hasFile = false;
         }
+
+        readConf();
 
         return true;
     }
