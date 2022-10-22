@@ -1,3 +1,5 @@
+package src.main.java.cnt.protocol;
+
 public class PeerInfo implements Cloneable{
 
     private int peerID;

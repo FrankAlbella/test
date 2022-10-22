@@ -4,10 +4,13 @@ import java.net.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Properties;
+import java.util.Scanner;
 import java.util.zip.GZIPInputStream;
 
 import src.main.java.cnt.protocol.Handshake;
 import src.main.java.cnt.protocol.Message;
+import src.main.java.cnt.protocol.PeerInfo;
+import src.main.java.cnt.protocol.Common;
 
 public class Client {
     Socket requestSocket;           //socket connect to the server
@@ -27,6 +30,10 @@ public class Client {
     boolean hasDownloadStarted;
 
     Handshake handshakeMessage = new Handshake();
+    PeerInfo peerInfo;
+    public Common commonCfg = new Common();
+    public Message msg;
+
 
     final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
     private ArrayList<String> clientList = new ArrayList<String>();
@@ -67,6 +74,9 @@ public class Client {
             // Get handshake from server (or peer), and validate it
             MESSAGE = (String) in.readObject();
             handshakeMessage.validateHandshake(MESSAGE, message);
+
+            // read peerInfo
+            readPeerInfo("1001");
 
             // Send bitfield message if it has any
             if (hasDownloadStarted) {
@@ -116,6 +126,39 @@ public class Client {
         }
     }
 
+    // will read from peerInfo.cfg, if peerID not found it throws an error
+    void readPeerInfo(String peerID) throws Exception{
+        Properties prop = new Properties();
+        String fileName = "peerInfo.cfg";
+        try (FileInputStream fis = new FileInputStream(fileName)) {
+            prop.load(fis);
+        } catch (FileNotFoundException ex) {
+         // FileNotFoundException catch is optional and can be collapsed
+            System.out.println("File Exception: File Not Found");
+        } catch (IOException ex) {
+            System.out.println("File IOException");
+        }
+
+        // check if inside the file
+        String peerIDFound = prop.getProperty(peerID);
+        if(peerIDFound == null){
+            throw new Exception("Error: PeerID not in peerInfo.cfg. Peer could not be started");
+        }
+
+        String name = peerIDFound.substring(0, 22);
+        String port = peerIDFound.substring(23,27);
+        String hasFile = peerIDFound.substring(28,29);
+        boolean containsFile;
+
+        if(hasFile.equals("1")){
+            containsFile = true;
+        }
+        else{
+            containsFile = false;
+        }
+
+        peerInfo = new PeerInfo(Integer.parseInt(peerID), name, Integer.parseInt(port), containsFile);
+    }
     //main method
     public static void main(String args[]) {
         if (args.length == 0) {
@@ -134,6 +177,7 @@ public class Client {
         // read the common.cfg file and set variables
         System.out.println("Reading Common.cfg...");
         Properties prop = new Properties();
+        Common common = new Common();
 
         try (FileInputStream fs = new FileInputStream("Common.cfg")) {
             prop.load(fs);
@@ -145,24 +189,23 @@ public class Client {
             System.exit(2);
         }
 
-        int bitfieldLength = 0;
+        common.setFileSize(Double.parseDouble(prop.getProperty("FileSize")));
+        common.setPieceSize(Double.parseDouble(prop.getProperty("PieceSize")));
 
-        double fileSize = Double.parseDouble(prop.getProperty("FileSize"));
-        double pieceSize = Double.parseDouble(prop.getProperty("PieceSize"));
+        //bitfieldLength = (int)Math.ceil(fileSize / (pieceSize * 4));
+        common.setBitFieldLength((int)Math.ceil(common.getFileSize() / (common.getPieceSize() * 4)));
 
-        // each element in the byte array has 4 bits, therefore we pieceSize*4
-        bitfieldLength = (int)Math.ceil(fileSize / (pieceSize * 4));
+        common.setPreferredNeighbors(Integer.parseInt(prop.getProperty("NumberOfPreferredNeighbors")));
+        common.setUnchokingInterval(Integer.parseInt(prop.getProperty("UnchokingInterval")));
+        common.setOptimisticUnchokingInterval(Integer.parseInt(prop.getProperty("OptimisticUnchokingInterval")));
 
-        int numNeighbors = Integer.parseInt(prop.getProperty("NumberOfPreferredNeighbors"));
-        int unchokingInterval = Integer.parseInt(prop.getProperty("UnchokingInterval"));
-        int optimisticUnchoke = Integer.parseInt(prop.getProperty("OptimisticUnchokingInterval"));
-
+        // starts the client
         System.out.println("Running the client: " + args[0]);
         Client client = new Client(args[0],
-                numNeighbors,
-                unchokingInterval,
-                optimisticUnchoke,
-                bitfieldLength,
+                common.getPreferredNeighbors(),
+                common.getUnchokingInterval(),
+                common.getOptimisticUnchokingInterval(),
+                common.getBitFieldLength(),
                 hasFile);
         client.run();
 
