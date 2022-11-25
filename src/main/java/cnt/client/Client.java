@@ -91,9 +91,6 @@ public class Client {
             // Send bitfield message if it has any
             if (hasDownloadStarted) {
                 loadFile();
-                try (FileOutputStream outputStream = new FileOutputStream("client_output")) {
-                    outputStream.write(fileContents);
-                }
 
                 sendMessage(new Message(bitfield.length, Message.Type.BITFIELD, bitfield));
                 log(((Message)in.readObject()).toString());
