@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Properties;
 
 public class Config {
+    String fileName;
     double fileSize;
     double pieceSize;
 
@@ -30,6 +31,8 @@ public class Config {
             System.exit(2);
         }
 
+        fileName = prop.getProperty("FileName");
+
         fileSize = Double.parseDouble(prop.getProperty("FileSize"));
         pieceSize = Double.parseDouble(prop.getProperty("PieceSize"));
 
@@ -40,6 +43,7 @@ public class Config {
         optimisticUnchoke = Integer.parseInt(prop.getProperty("OptimisticUnchokingInterval"));
     }
 
+    public String getFileName() { return fileName; }
     public int getFileSize() { return (int)fileSize; }
     public int getPieceSize() { return (int)pieceSize; }
     public int getBitfieldLength() { return bitfieldLength; }
@@ -49,7 +53,8 @@ public class Config {
 
     @Override
     public String toString() {
-        return "Config{fileSize=" + getFileSize() +
+        return "Config{fileName=" + getFileName() +
+                ", fileSize=" + getFileSize() +
                 ", pieceSize=" + getPieceSize() +
                 ", bitfieldLength=" + getBitfieldLength() +
                 ", numNeighbors=" + getNumNeighbors() +
