@@ -1,10 +1,12 @@
 package src.main.java.cnt.server;
 
+import src.main.java.cnt.protocol.Config;
 import src.main.java.cnt.protocol.Message;
 
 import java.net.*;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Server {
 
@@ -15,9 +17,8 @@ public class Server {
 
     public static void main(String[] args) throws Exception {
         System.out.println("The server is running.");
-        ServerSocket listener = new ServerSocket(sPort);
-        int clientNum = 1;
-        try {
+        try (ServerSocket listener = new ServerSocket(sPort)) {
+            int clientNum = 1;
             while (true) {
                 //handlerPeers.add(new Handler(listener.accept(), clientNum));
                 new Handler(listener.accept(), clientNum).start();
@@ -25,8 +26,6 @@ public class Server {
                 System.out.println("src.main.java.cnt.client.Client " + clientNum + " is connected!");
                 clientNum++;
             }
-        } finally {
-            listener.close();
         }
 
     }
@@ -54,6 +53,9 @@ public class Server {
                 out = new ObjectOutputStream(connection.getOutputStream());
                 out.flush();
                 in = new ObjectInputStream(connection.getInputStream());
+
+                Config config = new Config();
+                config.loadCommon();
                 try {
                     //receive the message sent from the client, check if handshake
                     serverReceiveHandshake((String) in.readObject()); // receive handshake once
@@ -62,10 +64,21 @@ public class Server {
                         //then send the same message back (debugging)
                         Message message = (Message) in.readObject();
                         message.print();
+                        if(message.getPayload() != null)
+                            System.out.println(Arrays.toString(message.getPayload()));
                         sendMessage(message);
                         // TODO: send peers to server
 
                         // create other if-else statements depending on what client sent
+
+                        //bitfield means it has pieces to send
+                        if(message.getType().equals(Message.Type.BITFIELD)) {
+                            byte[] clientBitfield = message.getPayload();
+                            byte[] localBitfield = new byte[clientBitfield.length];
+                            for (int i = 0; i < clientBitfield.length; i++) {
+
+                            }
+                        }
 
                     }
                 } catch (ClassNotFoundException classnot) {

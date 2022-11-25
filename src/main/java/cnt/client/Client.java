@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.zip.GZIPInputStream;
 
+import src.main.java.cnt.protocol.Config;
 import src.main.java.cnt.protocol.Handshake;
 import src.main.java.cnt.protocol.Message;
 
@@ -19,9 +20,7 @@ public class Client {
     String id;
 
     // From common.cfg
-    int numPreferredNeighbors;
-    int unchokingInterval;
-    int optimisticUnchokingInterval;
+    Config config;
     byte[] bitfield;
 
     boolean hasFile;
@@ -32,19 +31,17 @@ public class Client {
     final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
     private ArrayList<String> clientList = new ArrayList<String>();
 
-    public Client(String id, int numPreferredNeighbors, int unchokingInterval, int optimisticUnchokingInterval, int bitfieldLength, boolean hasFile) {
+    public Client(String id, boolean hasFile) {
         this.id = id;
-        this.numPreferredNeighbors = numPreferredNeighbors;
-        this.unchokingInterval = unchokingInterval;
-        this.optimisticUnchokingInterval = optimisticUnchokingInterval;
+        config = new Config();
+        config.loadCommon();
         this.hasFile = hasFile;
         this.hasDownloadStarted = hasFile;
-        bitfield = new byte[bitfieldLength];
-
+        bitfield = new byte[config.getBitfieldLength()];
 
         if(hasFile)
-            for (int i = 0; i < bitfieldLength; i++)
-                bitfield[i] = 1;
+            for (int i = 0; i < config.getBitfieldLength(); i++)
+                bitfield[i] = 127;
     }
 
     void run() {
@@ -89,6 +86,12 @@ public class Client {
             // Send bitfield message if it has any
             if (hasDownloadStarted) {
                 sendMessage(new Message(bitfield.length, Message.Type.BITFIELD, bitfield));
+                log(((Message)in.readObject()).toString());
+
+                while(true) {
+                    Message msgObj = (Message) in.readObject();
+
+                }
             }
         } catch (ConnectException e) {
             System.err.println("Connection refused. You need to initiate a server first.");
@@ -163,38 +166,8 @@ public class Client {
             hasFile = true;
         }
 
-        // read the common.cfg file and set variables
-        System.out.println("Reading Common.cfg...");
-        Properties prop = new Properties();
-
-        try (FileInputStream fs = new FileInputStream("Common.cfg")) {
-            prop.load(fs);
-        } catch (FileNotFoundException ex) {
-            System.err.println("Common.cfg not found！");
-            System.exit(2);
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-            System.exit(2);
-        }
-
-        int bitfieldLength = 0;
-
-        double fileSize = Double.parseDouble(prop.getProperty("FileSize"));
-        double pieceSize = Double.parseDouble(prop.getProperty("PieceSize"));
-
-        bitfieldLength = (int)Math.ceil(fileSize / (pieceSize));
-
-        int numNeighbors = Integer.parseInt(prop.getProperty("NumberOfPreferredNeighbors"));
-        int unchokingInterval = Integer.parseInt(prop.getProperty("UnchokingInterval"));
-        int optimisticUnchoke = Integer.parseInt(prop.getProperty("OptimisticUnchokingInterval"));
-
         System.out.println("Running the client: " + args[0]);
-        Client client = new Client(args[0],
-                numNeighbors,
-                unchokingInterval,
-                optimisticUnchoke,
-                bitfieldLength,
-                hasFile);
+        Client client = new Client(args[0], hasFile);
         client.run();
 
     }
