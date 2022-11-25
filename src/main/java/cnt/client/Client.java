@@ -5,6 +5,7 @@ import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.zip.GZIPInputStream;
 
@@ -69,16 +70,20 @@ public class Client {
             handshakeMessage.validateHandshake(MESSAGE, message);
             log(MESSAGE);
 
-            sendMessage(new Message(5, Message.Type.CHOKE, null));
+            // Various tests
+            sendMessage(new Message(1, Message.Type.CHOKE, null));
             log(((Message)in.readObject()).toString());
 
-            sendMessage(new Message(5, Message.Type.UNCHOKE, null));
+            sendMessage(new Message(1, Message.Type.UNCHOKE, null));
             log(((Message)in.readObject()).toString());
 
-            sendMessage(new Message(5, Message.Type.INTERESTED, null));
+            sendMessage(new Message(1, Message.Type.INTERESTED, null));
             log(((Message)in.readObject()).toString());
 
-            sendMessage(new Message(5, Message.Type.NOT_INTERESTED, null));
+            sendMessage(new Message(1, Message.Type.NOT_INTERESTED, null));
+            log(((Message)in.readObject()).toString());
+
+            sendMessage(new Message(5, Message.Type.HAVE, new byte[]{0, 2, 3, 4}));
             log(((Message)in.readObject()).toString());
 
             // Send bitfield message if it has any
@@ -154,7 +159,7 @@ public class Client {
         }
 
         boolean hasFile = false;
-        if (args.length > 1 && args[1] == "1") {
+        if (args.length > 1 && Objects.equals(args[1], "1")) {
             hasFile = true;
         }
 
@@ -177,8 +182,7 @@ public class Client {
         double fileSize = Double.parseDouble(prop.getProperty("FileSize"));
         double pieceSize = Double.parseDouble(prop.getProperty("PieceSize"));
 
-        // each element in the byte array has 4 bits, therefore we pieceSize*4
-        bitfieldLength = (int)Math.ceil(fileSize / (pieceSize * 4));
+        bitfieldLength = (int)Math.ceil(fileSize / (pieceSize));
 
         int numNeighbors = Integer.parseInt(prop.getProperty("NumberOfPreferredNeighbors"));
         int unchokingInterval = Integer.parseInt(prop.getProperty("UnchokingInterval"));
