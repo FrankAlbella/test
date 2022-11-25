@@ -2,6 +2,8 @@ package src.main.java.cnt.client;
 
 import java.net.*;
 import java.io.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Properties;
 import java.util.zip.GZIPInputStream;
@@ -67,6 +69,7 @@ public class Client {
             // Get handshake from server (or peer), and validate it
             MESSAGE = (String) in.readObject();
             handshakeMessage.validateHandshake(MESSAGE, message);
+            log(MESSAGE);
 
             // Send bitfield message if it has any
             if (hasDownloadStarted) {
@@ -113,6 +116,20 @@ public class Client {
             out.flush();
         } catch (IOException ioException) {
             ioException.printStackTrace();
+        }
+    }
+
+    //print and log message to file
+    void log(String msg) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy MM dd HH:mm:ss");
+        LocalDateTime now = LocalDateTime.now();
+        msg = dtf.format(now) + ": " + msg;
+        try (FileWriter fw = new FileWriter("log_peer_" + id + ".log", true)) {
+            fw.write(msg + '\n');
+            System.out.println(msg);
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+            System.exit(2);
         }
     }
 
