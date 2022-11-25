@@ -40,10 +40,10 @@ public class Config {
         optimisticUnchoke = Integer.parseInt(prop.getProperty("OptimisticUnchokingInterval"));
     }
 
-    public double getFileSize() { return  fileSize; }
-    public double getPieceSize() { return  pieceSize; }
-    public int getBitfieldLength() { return  bitfieldLength; }
-    public int getNumNeighbors() { return  numNeighbors; }
-    public int getUnchokingInterval() { return  unchokingInterval; }
-    public int getOptimisticUnchoke() { return  optimisticUnchoke; }
+    public int getFileSize() { return (int)fileSize; }
+    public int getPieceSize() { return (int)pieceSize; }
+    public int getBitfieldLength() { return bitfieldLength; }
+    public int getNumNeighbors() { return numNeighbors; }
+    public int getUnchokingInterval() { return unchokingInterval; }
+    public int getOptimisticUnchoke() { return optimisticUnchoke; }
 }
