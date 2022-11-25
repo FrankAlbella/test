@@ -15,8 +15,6 @@ public class Client {
     Socket requestSocket;           //socket connect to the server
     ObjectOutputStream out;         //stream write to the socket
     ObjectInputStream in;          //stream read from the socket
-    String message;                //message send to the server
-    String MESSAGE;                //capitalized message read from the server
     String id;
 
     // From common.cfg
@@ -63,13 +61,25 @@ public class Client {
 
             // create handshake message and send to server
             handshakeMessage.createHandshakeMessage(id);
-            message = handshakeMessage.getHandshake();
+            String message = handshakeMessage.getHandshake();
             sendMessage(message);
 
             // Get handshake from server (or peer), and validate it
-            MESSAGE = (String) in.readObject();
+            String MESSAGE = (String) in.readObject();
             handshakeMessage.validateHandshake(MESSAGE, message);
             log(MESSAGE);
+
+            sendMessage(new Message(5, Message.Type.CHOKE, null));
+            log(((Message)in.readObject()).toString());
+
+            sendMessage(new Message(5, Message.Type.UNCHOKE, null));
+            log(((Message)in.readObject()).toString());
+
+            sendMessage(new Message(5, Message.Type.INTERESTED, null));
+            log(((Message)in.readObject()).toString());
+
+            sendMessage(new Message(5, Message.Type.NOT_INTERESTED, null));
+            log(((Message)in.readObject()).toString());
 
             // Send bitfield message if it has any
             if (hasDownloadStarted) {
@@ -97,7 +107,7 @@ public class Client {
         }
     }
 
-    //send a message to the output stream
+    //send a message to the output stream, used for handshake
     void sendMessage(String msg) {
         try {
             //stream write the message

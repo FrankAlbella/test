@@ -1,5 +1,7 @@
 package src.main.java.cnt.server;
 
+import src.main.java.cnt.protocol.Message;
+
 import java.net.*;
 import java.io.*;
 import java.util.ArrayList;
@@ -34,8 +36,6 @@ public class Server {
      * loop and are responsible for dealing with a single client's requests.
      */
     private static class Handler extends Thread {
-        private String message;    //message received from the client
-        private String MESSAGE;    //uppercase message send to the client
         private Socket connection;
         private ObjectInputStream in;    //stream read from the socket
         private ObjectOutputStream out;    //stream write to the socket
@@ -55,11 +55,14 @@ public class Server {
                 out.flush();
                 in = new ObjectInputStream(connection.getInputStream());
                 try {
+                    //receive the message sent from the client, check if handshake
+                    serverReceiveHandshake((String) in.readObject()); // receive handshake once
                     while (true) {
-                        //receive the message sent from the client, check if handshake
-                        message = (String) in.readObject();
-                        serverReceiveHandshake(message);
-
+                        //receieve message from client
+                        //then send the same message back (debugging)
+                        Message message = (Message) in.readObject();
+                        message.print();
+                        sendMessage(message);
                         // TODO: send peers to server
 
                         // create other if-else statements depending on what client sent
@@ -85,6 +88,18 @@ public class Server {
         //send a message to the output stream
         public void sendMessage(String msg) {
             try {
+                out.writeObject(msg);
+                out.flush();
+                System.out.println("Send message: " + msg + " to src.main.java.cnt.client.Client " + no);
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+            }
+        }
+
+        //send a message using the message object
+        void sendMessage(Message msg) {
+            try {
+                //stream write the message
                 out.writeObject(msg);
                 out.flush();
                 System.out.println("Send message: " + msg + " to src.main.java.cnt.client.Client " + no);
