@@ -2,6 +2,7 @@ package src.main.java.cnt.client;
 
 import java.net.*;
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ public class Client {
 
     boolean hasFile;
     boolean hasDownloadStarted;
+    byte[] fileContents;
 
     Handshake handshakeMessage = new Handshake();
 
@@ -38,6 +40,9 @@ public class Client {
         this.hasFile = hasFile;
         this.hasDownloadStarted = hasFile;
         bitfield = new byte[config.getBitfieldLength()];
+        fileContents = new byte[config.getFileSize()];
+
+        log(config.toString());
 
         if(hasFile)
             for (int i = 0; i < config.getBitfieldLength(); i++)
@@ -85,13 +90,34 @@ public class Client {
 
             // Send bitfield message if it has any
             if (hasDownloadStarted) {
+                loadFile();
+                try (FileOutputStream outputStream = new FileOutputStream("client_output")) {
+                    outputStream.write(fileContents);
+                }
+
                 sendMessage(new Message(bitfield.length, Message.Type.BITFIELD, bitfield));
                 log(((Message)in.readObject()).toString());
 
                 while(true) {
                     Message msgObj = (Message) in.readObject();
 
+                    if(msgObj.getType() != Message.Type.REQUEST)
+                        break;
+
+                    byte[] piece = new byte[config.getPieceSize()];
+
+                    ByteBuffer wrapped = ByteBuffer.wrap(msgObj.getPayload()); // big-endian by default
+                    int index = wrapped.getInt();
+                    int offset = index * config.getPieceSize();
+
+                    for(int i = 0; (i < config.getPieceSize()) && (i+offset < fileContents.length); i++)
+                        piece[i] = fileContents[i + offset];
+
+                    sendMessage(new Message(config.getPieceSize(), Message.Type.PIECE, piece));
+                    log("Sending piece #" + index);
                 }
+
+                log("TRANSFER FINISHED");
             }
         } catch (ConnectException e) {
             System.err.println("Connection refused. You need to initiate a server first.");
@@ -148,6 +174,19 @@ public class Client {
         } catch (IOException ioException) {
             ioException.printStackTrace();
             System.exit(2);
+        }
+    }
+
+    //load full file into memory to share
+    void loadFile() {
+        File dir = new File(id);
+        String filePath = id + "/" + Objects.requireNonNull(dir.list())[0];
+        try (FileInputStream fs = new FileInputStream(filePath)){
+            fs.read(fileContents);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
