@@ -44,9 +44,11 @@ public class Client {
 
         log(config.toString());
 
-        if(hasFile)
+        if(hasFile) {
+            loadFile();
             for (int i = 0; i < config.getBitfieldLength(); i++)
                 bitfield[i] = 127;
+        }
     }
 
     void run() {
@@ -90,8 +92,6 @@ public class Client {
 
             // Send bitfield message if it has any
             if (hasDownloadStarted) {
-                loadFile();
-
                 sendMessage(new Message(bitfield.length, Message.Type.BITFIELD, bitfield));
                 log(((Message)in.readObject()).toString());
 
