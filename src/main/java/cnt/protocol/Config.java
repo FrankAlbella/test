@@ -46,4 +46,16 @@ public class Config {
     public int getNumNeighbors() { return numNeighbors; }
     public int getUnchokingInterval() { return unchokingInterval; }
     public int getOptimisticUnchoke() { return optimisticUnchoke; }
+
+    @Override
+    public String toString() {
+        return "Config{fileSize=" + getFileSize() +
+                ", pieceSize=" + getPieceSize() +
+                ", bitfieldLength=" + getBitfieldLength() +
+                ", numNeighbors=" + getNumNeighbors() +
+                ", unchokingInterval=" + getUnchokingInterval() +
+                ", optimisticInterval=" + getOptimisticUnchoke() +
+                "}";
+
+    }
 }
