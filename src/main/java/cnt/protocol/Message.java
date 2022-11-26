@@ -1,6 +1,8 @@
 package src.main.java.cnt.protocol;
 
-public class Message {
+import java.util.Arrays;
+
+public class Message implements java.io.Serializable{
     public enum Type {
         CHOKE,
         UNCHOKE,
@@ -35,5 +37,18 @@ public class Message {
 
     public byte[] getPayload() {
         return payload;
+    }
+
+    public void print() {
+        System.out.println(this);
+    }
+
+    @Override
+    public String toString() {
+        return "Message{" +
+                "length=" + getLength() +
+                ", type=" + getTypeValue() +
+                ", payload=" + Arrays.toString(getPayload()) +
+                "}";
     }
 }
