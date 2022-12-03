@@ -5,10 +5,7 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Properties;
+import java.util.*;
 import java.util.zip.GZIPInputStream;
 
 import src.main.java.cnt.protocol.Config;
@@ -34,6 +31,9 @@ public class Client {
 
     final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
     private ArrayList<String> clientList = new ArrayList<String>();
+    List<Integer> missing = new ArrayList<>();
+
+    final byte BYTES_PIECE_SIZE = 4;
 
     public Client(String id, boolean hasFile) {
         this.id = id;
@@ -50,6 +50,10 @@ public class Client {
             loadFile();
             for (int i = 0; i < config.getBitfieldLength(); i++)
                 bitfield[i] = 127;
+        }
+        else {
+            for (int i = 0; i < config.getBitfieldLength(); i++)
+                missing.add(i);
         }
     }
 
@@ -101,7 +105,6 @@ public class Client {
                     case BITFIELD:
                         break; //TODO BITFIELD
                     case REQUEST: {
-                        final byte BYTES_PIECE_SIZE = 4;
                         byte[] piece = new byte[config.getPieceSize() + BYTES_PIECE_SIZE];
 
                         ByteBuffer wrapped = ByteBuffer.wrap(msgObj.getPayload()); // big-endian by default
@@ -121,7 +124,18 @@ public class Client {
                         break;
                     }
                     case PIECE: {
-                        break; //TODO PIECE
+                        hasDownloadStarted = true;
+
+                        ByteBuffer wrapped = ByteBuffer.wrap(Arrays.copyOfRange(msgObj.getPayload(), 0, BYTES_PIECE_SIZE));
+                        int index = wrapped.getInt();
+
+
+                        int offset = index * config.getPieceSize();
+                        for (int i = 0; (i < msgObj.getPayload().length - BYTES_PIECE_SIZE) && (i+offset < fileContents.length); i++) {
+                            fileContents[i+offset] = msgObj.getPayload()[i+BYTES_PIECE_SIZE];
+                        }
+
+                        missing.remove(Integer.valueOf(index));
                     }
 
                     default:
@@ -152,6 +166,10 @@ public class Client {
                 ioException.printStackTrace();
             }
         }
+    }
+
+    void updateBitfield() {
+
     }
 
     //send a message to the output stream, used for handshake
