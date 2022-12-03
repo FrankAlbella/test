@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.zip.GZIPInputStream;
@@ -13,6 +14,7 @@ import java.util.zip.GZIPInputStream;
 import src.main.java.cnt.protocol.Config;
 import src.main.java.cnt.protocol.Handshake;
 import src.main.java.cnt.protocol.Message;
+import sun.security.util.ArrayUtil;
 
 public class Client {
     Socket requestSocket;           //socket connect to the server
@@ -99,14 +101,20 @@ public class Client {
                     case BITFIELD:
                         break; //TODO BITFIELD
                     case REQUEST: {
-                        byte[] piece = new byte[config.getPieceSize()];
+                        final byte BYTES_PIECE_SIZE = 4;
+                        byte[] piece = new byte[config.getPieceSize() + BYTES_PIECE_SIZE];
 
                         ByteBuffer wrapped = ByteBuffer.wrap(msgObj.getPayload()); // big-endian by default
                         int index = wrapped.getInt();
                         int offset = index * config.getPieceSize();
 
+                        // Make the first 4 bytes the index
+                        for(int i = 0; i < BYTES_PIECE_SIZE; i++)
+                            piece[i] = msgObj.getPayload()[i];
+
+                        // Populate rest of payload with byte information
                         for (int i = 0; (i < config.getPieceSize()) && (i + offset < fileContents.length); i++)
-                            piece[i] = fileContents[i + offset];
+                            piece[i+BYTES_PIECE_SIZE] = fileContents[i + offset];
 
                         sendMessage(new Message(config.getPieceSize(), Message.Type.PIECE, piece));
                         log("Sending piece #" + index);

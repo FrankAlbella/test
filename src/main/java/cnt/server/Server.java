@@ -118,9 +118,18 @@ public class Server {
                                     break;
                                 }
 
+                                final byte BYTES_PIECE_SIZE = 4;
+
+                                int expect = index;
+
+                                ByteBuffer wrapped = ByteBuffer.wrap(Arrays.copyOfRange(message.getPayload(), 0, BYTES_PIECE_SIZE));
+                                index = wrapped.getInt();
+
+                                assert(expect == index);
+
                                 int offset = index * config.getPieceSize();
-                                for (int i = 0; (i < message.getPayload().length) && (i+offset < fileContents.length); i++) {
-                                    fileContents[i+offset] = message.getPayload()[i];
+                                for (int i = 0; (i < message.getPayload().length - BYTES_PIECE_SIZE) && (i+offset < fileContents.length); i++) {
+                                    fileContents[i+offset] = message.getPayload()[i+BYTES_PIECE_SIZE];
                                 }
 
                                 missing.remove(rand);
