@@ -74,48 +74,56 @@ public class Client {
             handshakeMessage.validateHandshake(MESSAGE, message);
             log(MESSAGE);
 
-            // Various tests
-            sendMessage(new Message(1, Message.Type.CHOKE, null));
-            log(((Message)in.readObject()).toString());
-
-            sendMessage(new Message(1, Message.Type.UNCHOKE, null));
-            log(((Message)in.readObject()).toString());
-
-            sendMessage(new Message(1, Message.Type.INTERESTED, null));
-            log(((Message)in.readObject()).toString());
-
-            sendMessage(new Message(1, Message.Type.NOT_INTERESTED, null));
-            log(((Message)in.readObject()).toString());
-
-            sendMessage(new Message(5, Message.Type.HAVE, new byte[]{0, 2, 3, 4}));
-            log(((Message)in.readObject()).toString());
-
             // Send bitfield message if it has any
             if (hasDownloadStarted) {
                 sendMessage(new Message(bitfield.length, Message.Type.BITFIELD, bitfield));
                 log(((Message)in.readObject()).toString());
-
-                while(true) {
-                    Message msgObj = (Message) in.readObject();
-
-                    if(msgObj.getType() != Message.Type.REQUEST)
-                        break;
-
-                    byte[] piece = new byte[config.getPieceSize()];
-
-                    ByteBuffer wrapped = ByteBuffer.wrap(msgObj.getPayload()); // big-endian by default
-                    int index = wrapped.getInt();
-                    int offset = index * config.getPieceSize();
-
-                    for(int i = 0; (i < config.getPieceSize()) && (i+offset < fileContents.length); i++)
-                        piece[i] = fileContents[i + offset];
-
-                    sendMessage(new Message(config.getPieceSize(), Message.Type.PIECE, piece));
-                    log("Sending piece #" + index);
-                }
-
-                log("TRANSFER FINISHED");
             }
+
+            boolean shouldExit = false;
+
+            while(!shouldExit) {
+                Message msgObj = (Message) in.readObject();
+
+                switch(msgObj.getType()) {
+                    case CHOKE:
+                        break; //TODO CHOKE
+                    case UNCHOKE:
+                        break; //TODO UNCHOKE
+                    case INTERESTED:
+                        break; //TODO INTERESTED
+                    case NOT_INTERESTED:
+                        break; //TODO NOT INTERESTED
+                    case HAVE:
+                        break; //TODO HAVE
+                    case BITFIELD:
+                        break; //TODO BITFIELD
+                    case REQUEST: {
+                        byte[] piece = new byte[config.getPieceSize()];
+
+                        ByteBuffer wrapped = ByteBuffer.wrap(msgObj.getPayload()); // big-endian by default
+                        int index = wrapped.getInt();
+                        int offset = index * config.getPieceSize();
+
+                        for (int i = 0; (i < config.getPieceSize()) && (i + offset < fileContents.length); i++)
+                            piece[i] = fileContents[i + offset];
+
+                        sendMessage(new Message(config.getPieceSize(), Message.Type.PIECE, piece));
+                        log("Sending piece #" + index);
+                        break;
+                    }
+                    case PIECE: {
+                        break; //TODO PIECE
+                    }
+
+                    default:
+                        log("Received unsupported message! Exiting...");
+                        shouldExit = true;
+                }
+            }
+
+            log("TRANSFER FINISHED");
+
         } catch (ConnectException e) {
             System.err.println("Connection refused. You need to initiate a server first.");
         } catch (ClassNotFoundException e) {

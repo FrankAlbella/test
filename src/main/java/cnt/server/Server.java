@@ -62,7 +62,7 @@ public class Server {
                     //receive the message sent from the client, check if handshake
                     serverReceiveHandshake((String) in.readObject()); // receive handshake once
                     while (true) {
-                        //receieve message from client
+                        //receive message from client
                         //then send the same message back (debugging)
                         Message message = (Message) in.readObject();
                         message.print();
