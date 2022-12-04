@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Scanner;
@@ -55,6 +56,7 @@ public class Config {
         File configFile = new File("PeerInfo.cfg");
 
         try (Scanner scanner = new Scanner(configFile)){
+            peers = new ArrayList<>();
             while (scanner.hasNextLine()) {
                 String text = scanner.nextLine();
                 String[] peerVars = text.split("\\s+");
