@@ -11,6 +11,7 @@ import java.util.zip.GZIPInputStream;
 import src.main.java.cnt.protocol.Config;
 import src.main.java.cnt.protocol.Handshake;
 import src.main.java.cnt.protocol.Message;
+import src.main.java.cnt.server.Peer;
 import sun.security.util.ArrayUtil;
 
 public class Client {
@@ -20,10 +21,7 @@ public class Client {
     String id;
 
     // From common.cfg
-    Config config;
-    byte[] bitfield;
-
-    boolean hasFile;
+    Peer selfInfo;
     boolean hasDownloadStarted;
     byte[] fileContents;
 
@@ -35,26 +33,18 @@ public class Client {
 
     final byte BYTES_PIECE_SIZE = 4;
 
-    public Client(String id, boolean hasFile) {
+    public Client(String id) {
         this.id = id;
-        config = new Config();
-        config.loadCommon();
-        this.hasFile = hasFile;
-        this.hasDownloadStarted = hasFile;
-        bitfield = new byte[config.getBitfieldLength()];
-        fileContents = new byte[config.getFileSize()];
+        fileContents = new byte[Config.getFileSize()];
 
-        log(config.toString());
+        log(Config.getString());
 
-        if(hasFile) {
-            loadFile();
-            for (int i = 0; i < config.getBitfieldLength(); i++)
-                bitfield[i] = 127;
+        for(int i = 0; i < Config.getPeers().size(); i++) {
+            if (Config.getPeers().get(i).getPeerID().equals(this.id))
+                this.selfInfo = Config.getPeers().get(i);
         }
-        else {
-            for (int i = 0; i < config.getBitfieldLength(); i++)
-                missing.add(i);
-        }
+
+        this.hasDownloadStarted = this.selfInfo.getBitfield()[0] != 0;
     }
 
     void run() {
@@ -82,7 +72,7 @@ public class Client {
 
             // Send bitfield message if it has any
             if (hasDownloadStarted) {
-                sendMessage(new Message(bitfield.length, Message.Type.BITFIELD, bitfield));
+                sendMessage(new Message(selfInfo.getBitfield().length, Message.Type.BITFIELD, selfInfo.getBitfield()));
                 log(((Message)in.readObject()).toString());
             }
 
@@ -105,21 +95,21 @@ public class Client {
                     case BITFIELD:
                         break; //TODO BITFIELD
                     case REQUEST: {
-                        byte[] piece = new byte[config.getPieceSize() + BYTES_PIECE_SIZE];
+                        byte[] piece = new byte[Config.getPieceSize() + BYTES_PIECE_SIZE];
 
                         ByteBuffer wrapped = ByteBuffer.wrap(msgObj.getPayload()); // big-endian by default
                         int index = wrapped.getInt();
-                        int offset = index * config.getPieceSize();
+                        int offset = index * Config.getPieceSize();
 
                         // Make the first 4 bytes the index
                         for(int i = 0; i < BYTES_PIECE_SIZE; i++)
                             piece[i] = msgObj.getPayload()[i];
 
                         // Populate rest of payload with byte information
-                        for (int i = 0; (i < config.getPieceSize()) && (i + offset < fileContents.length); i++)
+                        for (int i = 0; (i < Config.getPieceSize()) && (i + offset < fileContents.length); i++)
                             piece[i+BYTES_PIECE_SIZE] = fileContents[i + offset];
 
-                        sendMessage(new Message(config.getPieceSize(), Message.Type.PIECE, piece));
+                        sendMessage(new Message(Config.getPieceSize() + BYTES_PIECE_SIZE, Message.Type.PIECE, piece));
                         log("Sending piece #" + index);
                         break;
                     }
@@ -130,7 +120,7 @@ public class Client {
                         int index = wrapped.getInt();
 
 
-                        int offset = index * config.getPieceSize();
+                        int offset = index * Config.getPieceSize();
                         for (int i = 0; (i < msgObj.getPayload().length - BYTES_PIECE_SIZE) && (i+offset < fileContents.length); i++) {
                             fileContents[i+offset] = msgObj.getPayload()[i+BYTES_PIECE_SIZE];
                         }
@@ -166,10 +156,6 @@ public class Client {
                 ioException.printStackTrace();
             }
         }
-    }
-
-    void updateBitfield() {
-
     }
 
     //send a message to the output stream, used for handshake
@@ -231,13 +217,11 @@ public class Client {
             System.exit(1);
         }
 
-        boolean hasFile = false;
-        if (args.length > 1 && Objects.equals(args[1], "1")) {
-            hasFile = true;
-        }
+        Config.loadCommon();
+        Config.loadPeerInfo();
 
         System.out.println("Running the client: " + args[0]);
-        Client client = new Client(args[0], hasFile);
+        Client client = new Client(args[0]);
         client.run();
 
     }
