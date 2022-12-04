@@ -3,208 +3,75 @@ package src.main.java.cnt.client;
 import java.net.*;
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-import src.main.java.cnt.protocol.Config;
-import src.main.java.cnt.protocol.Handshake;
-import src.main.java.cnt.protocol.Message;
+import src.main.java.cnt.protocol.*;
 import src.main.java.cnt.server.Peer;
+import src.main.java.cnt.server.Server;
+
+import static src.main.java.cnt.protocol.Log.log;
 
 public class Client {
-    Socket requestSocket;           //socket connect to the server
-    ObjectOutputStream out;         //stream write to the socket
-    ObjectInputStream in;          //stream read from the socket
-    String id;
-
     // From common.cfg
     Peer selfInfo;
     boolean hasDownloadStarted;
-    byte[] fileContents;
+    ClientState state;
 
     Handshake handshakeMessage = new Handshake();
     List<Integer> missing = new ArrayList<>();
 
-    final byte BYTES_PIECE_SIZE = 4;
-
     public Client(String id) {
-        this.id = id;
-        fileContents = new byte[Config.getFileSize()];
-
-        log(Config.getString());
+        log(Config.getString(), id);
 
         //search peer list to find self by id
-        for(int i = 0; i < Config.getPeers().size(); i++) {
-            if (Config.getPeers().get(i).getPeerID().equals(this.id)) {
-                this.selfInfo = Config.getPeers().get(i);
-                Config.getPeers().remove(i); //remove self from peer list
+        for(int i = 0; i < state.getPeers().size(); i++) {
+            if (state.getPeers().get(i).getPeerID().equals(id)) {
+                this.selfInfo = state.getPeers().get(i);
+                state.getPeers().remove(i); //remove self from peer list
                 break;
             }
         }
 
+        state = new ClientState(this.selfInfo);
+        state.loadPeerInfo();
+
         //if the file has already been downloaded (all bits in the bitfield are non-zero)
         if(this.selfInfo.getBitfield()[0] != 0) {
             this.hasDownloadStarted = true;
-            loadFile();
+            state.loadFile();
         }
     }
 
     void run() {
-        try {
-            //create a socket to connect to the server
-            requestSocket = new Socket("localhost", 8000);
-            System.out.println("Connected to localhost in port 8000");
-            //initialize inputStream and outputStream
-            out = new ObjectOutputStream(requestSocket.getOutputStream());
-            out.flush();
-            in = new ObjectInputStream(requestSocket.getInputStream());
+        // Attempt to connect to other peers
+        for (Peer peer : state.getPeers()) {
+            for(int i = 0; i < Config.MAX_CONNECT_ATTEMPTS; i++) {
+                try {
+                    // TODO change "localhost" to real hostname
+                    Socket socket = new Socket("localhost", Config.PORT_OFFSET + peer.getPortNumber());
+                    ObjectOutputStream peerOut = new ObjectOutputStream(socket.getOutputStream()); //stream write to the socket
+                    peerOut.flush();
+                    ObjectInputStream peerIn = new ObjectInputStream(socket.getInputStream()); //stream read from the socket
 
-            // create handshake message and send to server
-            handshakeMessage.createHandshakeMessage(id);
-            String message = handshakeMessage.getHandshake();
-            sendMessage(message);
-
-            // Get handshake from server (or peer), and validate it
-            String MESSAGE = (String) in.readObject();
-            handshakeMessage.validateHandshake(MESSAGE, message);
-            log(MESSAGE);
-
-            // Send bitfield message if it has any
-            if (hasDownloadStarted) {
-                sendMessage(new Message(selfInfo.getBitfield().length, Message.Type.BITFIELD, selfInfo.getBitfield()));
-                log(in.readObject().toString());
-            }
-
-            boolean shouldExit = false;
-
-            while(!shouldExit) {
-                Message msgObj = (Message) in.readObject();
-
-                switch(msgObj.getType()) {
-                    case CHOKE:
-                        break; //TODO CHOKE
-                    case UNCHOKE:
-                        break; //TODO UNCHOKE
-                    case INTERESTED:
-                        break; //TODO INTERESTED
-                    case NOT_INTERESTED:
-                        break; //TODO NOT INTERESTED
-                    case HAVE:
-                        break; //TODO HAVE
-                    case BITFIELD:
-                        break; //TODO BITFIELD
-                    case REQUEST: {
-                        byte[] piece = new byte[Config.getPieceSize() + BYTES_PIECE_SIZE];
-
-                        ByteBuffer wrapped = ByteBuffer.wrap(msgObj.getPayload()); // big-endian by default
-                        int index = wrapped.getInt();
-                        int offset = index * Config.getPieceSize();
-
-                        // Make the first 4 bytes the index
-                        for(int i = 0; i < BYTES_PIECE_SIZE; i++)
-                            piece[i] = msgObj.getPayload()[i];
-
-                        // Populate rest of payload with byte information
-                        for (int i = 0; (i < Config.getPieceSize()) && (i + offset < fileContents.length); i++)
-                            piece[i+BYTES_PIECE_SIZE] = fileContents[i + offset];
-
-                        sendMessage(new Message(Config.getPieceSize() + BYTES_PIECE_SIZE, Message.Type.PIECE, piece));
-                        log("Sending piece #" + index);
-                        break;
-                    }
-                    case PIECE: {
-                        hasDownloadStarted = true;
-
-                        ByteBuffer wrapped = ByteBuffer.wrap(Arrays.copyOfRange(msgObj.getPayload(), 0, BYTES_PIECE_SIZE));
-                        int index = wrapped.getInt();
-
-
-                        int offset = index * Config.getPieceSize();
-                        for (int i = 0; (i < msgObj.getPayload().length - BYTES_PIECE_SIZE) && (i+offset < fileContents.length); i++) {
-                            fileContents[i+offset] = msgObj.getPayload()[i+BYTES_PIECE_SIZE];
-                        }
-
-                        // TODO update bitfield
-
-                        missing.remove(Integer.valueOf(index));
-                    }
-
-                    default:
-                        log("Received unsupported message! Exiting...");
-                        shouldExit = true;
+                    peer.setSocket(socket, peerIn, peerOut);
+                    new PeerHandler(peer, state);
+                    break;
+                } catch (IOException e) {
+                    Log.log(selfInfo.getPeerID() + " failed to connect to peer " + peer.getPeerID(),
+                            selfInfo.getPeerID());
                 }
             }
+        }
 
-            log("TRANSFER FINISHED");
-
-        } catch (ConnectException e) {
-            System.err.println("Connection refused. You need to initiate a server first.");
-        } catch (ClassNotFoundException e) {
-            System.err.println("Class not found");
-        } catch (UnknownHostException unknownHost) {
-            System.err.println("You are trying to connect to an unknown host!");
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-        } catch (Exception e) {
-            System.err.println(e.getMessage());
-        } finally {
-            //Close connections
-            try {
-                in.close();
-                out.close();
-                requestSocket.close();
-            } catch (IOException ioException) {
-                ioException.printStackTrace();
+        // Listen for peers
+        int port = Config.PORT_OFFSET + selfInfo.getPortNumber();
+        Log.log("Listening for peers on port " + port, selfInfo.getPeerID());
+        while(true) {
+            try (ServerSocket listener = new ServerSocket(port)) {
+                new PeerHandler(listener.accept(), state).start();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-        }
-    }
-
-    //send a message to the output stream, used for handshake
-    void sendMessage(String msg) {
-        try {
-            //stream write the message
-            out.writeObject(msg);
-            out.flush();
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-        }
-    }
-
-    //send a message using the message object
-    void sendMessage(Message msg) {
-        try {
-            //stream write the message
-            out.writeObject(msg);
-            out.flush();
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-        }
-    }
-
-    //print and log message to file
-    void log(String msg) {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy MM dd HH:mm:ss");
-        LocalDateTime now = LocalDateTime.now();
-        msg = dtf.format(now) + ": " + msg;
-        try (FileWriter fw = new FileWriter("log_peer_" + id + ".log", true)) {
-            fw.write(msg + '\n');
-            System.out.println(msg);
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-            System.exit(2);
-        }
-    }
-
-    //load full file into memory to share
-    void loadFile() {
-        File dir = new File(id);
-        String filePath = id + "/" + Objects.requireNonNull(dir.list())[0];
-        try (FileInputStream fs = new FileInputStream(filePath)){
-            //noinspection ResultOfMethodCallIgnored
-            fs.read(fileContents);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -219,7 +86,6 @@ public class Client {
         }
 
         Config.loadCommon();
-        Config.loadPeerInfo();
 
         System.out.println("Running the client: " + args[0]);
         Client client = new Client(args[0]);
