@@ -6,13 +6,11 @@ import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.zip.GZIPInputStream;
 
 import src.main.java.cnt.protocol.Config;
 import src.main.java.cnt.protocol.Handshake;
 import src.main.java.cnt.protocol.Message;
 import src.main.java.cnt.server.Peer;
-import sun.security.util.ArrayUtil;
 
 public class Client {
     Socket requestSocket;           //socket connect to the server
@@ -26,9 +24,6 @@ public class Client {
     byte[] fileContents;
 
     Handshake handshakeMessage = new Handshake();
-
-    final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
-    private ArrayList<String> clientList = new ArrayList<String>();
     List<Integer> missing = new ArrayList<>();
 
     final byte BYTES_PIECE_SIZE = 4;
@@ -39,12 +34,20 @@ public class Client {
 
         log(Config.getString());
 
+        //search peer list to find self by id
         for(int i = 0; i < Config.getPeers().size(); i++) {
-            if (Config.getPeers().get(i).getPeerID().equals(this.id))
+            if (Config.getPeers().get(i).getPeerID().equals(this.id)) {
                 this.selfInfo = Config.getPeers().get(i);
+                Config.getPeers().remove(i); //remove self from peer list
+                break;
+            }
         }
 
-        this.hasDownloadStarted = this.selfInfo.getBitfield()[0] != 0;
+        //if the file has already been downloaded (all bits in the bitfield are non-zero)
+        if(this.selfInfo.getBitfield()[0] != 0) {
+            this.hasDownloadStarted = true;
+            loadFile();
+        }
     }
 
     void run() {
@@ -56,9 +59,6 @@ public class Client {
             out = new ObjectOutputStream(requestSocket.getOutputStream());
             out.flush();
             in = new ObjectInputStream(requestSocket.getInputStream());
-
-            //get Input from standard input
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
 
             // create handshake message and send to server
             handshakeMessage.createHandshakeMessage(id);
@@ -73,7 +73,7 @@ public class Client {
             // Send bitfield message if it has any
             if (hasDownloadStarted) {
                 sendMessage(new Message(selfInfo.getBitfield().length, Message.Type.BITFIELD, selfInfo.getBitfield()));
-                log(((Message)in.readObject()).toString());
+                log(in.readObject().toString());
             }
 
             boolean shouldExit = false;
@@ -124,6 +124,8 @@ public class Client {
                         for (int i = 0; (i < msgObj.getPayload().length - BYTES_PIECE_SIZE) && (i+offset < fileContents.length); i++) {
                             fileContents[i+offset] = msgObj.getPayload()[i+BYTES_PIECE_SIZE];
                         }
+
+                        // TODO update bitfield
 
                         missing.remove(Integer.valueOf(index));
                     }
@@ -199,16 +201,15 @@ public class Client {
         File dir = new File(id);
         String filePath = id + "/" + Objects.requireNonNull(dir.list())[0];
         try (FileInputStream fs = new FileInputStream(filePath)){
+            //noinspection ResultOfMethodCallIgnored
             fs.read(fileContents);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     //main method
-    public static void main(String args[]) {
+    public static void main(String[] args) {
         if (args.length == 0) {
             System.err.println("Must be supplied ID as argument.");
             System.exit(1);
