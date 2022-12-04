@@ -1,22 +1,28 @@
 package src.main.java.cnt.protocol;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
 import java.util.Properties;
+import java.util.Scanner;
+
+import src.main.java.cnt.server.Peer;
 
 public class Config {
-    String fileName;
-    double fileSize;
-    double pieceSize;
+    private static String fileName;
+    private static double fileSize;
+    private static double pieceSize;
 
-    int bitfieldLength;
+    private static int bitfieldLength;
 
-    int numNeighbors;
-    int unchokingInterval;
-    int optimisticUnchoke;
+    private static int numNeighbors;
+    private static int unchokingInterval;
+    private static int optimisticUnchoke;
 
-    public void loadCommon() {
+    private static List<Peer> peers;
+    public static void loadCommon() {
         // read the common.cfg file and set variables
         System.out.println("Reading Common.cfg...");
         Properties prop = new Properties();
@@ -43,16 +49,39 @@ public class Config {
         optimisticUnchoke = Integer.parseInt(prop.getProperty("OptimisticUnchokingInterval"));
     }
 
-    public String getFileName() { return fileName; }
-    public int getFileSize() { return (int)fileSize; }
-    public int getPieceSize() { return (int)pieceSize; }
-    public int getBitfieldLength() { return bitfieldLength; }
-    public int getNumNeighbors() { return numNeighbors; }
-    public int getUnchokingInterval() { return unchokingInterval; }
-    public int getOptimisticUnchoke() { return optimisticUnchoke; }
+    public static void loadPeerInfo() {
+        System.out.println("Reading PeerInfo.cfg...");
 
-    @Override
-    public String toString() {
+        File configFile = new File("PeerInfo.cfg");
+
+        try (Scanner scanner = new Scanner(configFile)){
+            while (scanner.hasNextLine()) {
+                String text = scanner.nextLine();
+                String[] peerVars = text.split("\\s+");
+
+                Peer peer = new Peer();
+
+                peer.peerData(peerVars[0], peerVars[1], Integer.parseInt(peerVars[2]), Integer.parseInt(peerVars[3]));
+                peers.add(peer);
+            }
+
+        }  catch (FileNotFoundException ex) {
+            System.err.println("PeerInfo.cfg not found！");
+            System.exit(2);
+        }
+    }
+
+    public static List<Peer> getPeers() { return peers; }
+    public static String getFileName() { return fileName; }
+    public static int getFileSize() { return (int)fileSize; }
+    public static int getPieceSize() { return (int)pieceSize; }
+    public static int getBitfieldLength() { return bitfieldLength; }
+    public static int getNumNeighbors() { return numNeighbors; }
+    public static int getUnchokingInterval() { return unchokingInterval; }
+    public static int getOptimisticUnchoke() { return optimisticUnchoke; }
+
+    // toString cannot be static, so getString is used instead
+    public static String getString() {
         return "Config{fileName=" + getFileName() +
                 ", fileSize=" + getFileSize() +
                 ", pieceSize=" + getPieceSize() +
@@ -60,6 +89,7 @@ public class Config {
                 ", numNeighbors=" + getNumNeighbors() +
                 ", unchokingInterval=" + getUnchokingInterval() +
                 ", optimisticInterval=" + getOptimisticUnchoke() +
+                ", peers=" + getPeers() +
                 "}";
 
     }
