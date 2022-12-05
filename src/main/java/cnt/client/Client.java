@@ -6,8 +6,6 @@ import java.io.*;
 import src.main.java.cnt.protocol.*;
 import src.main.java.cnt.server.Peer;
 
-import static src.main.java.cnt.protocol.Log.log;
-
 public class Client {
     // From common.cfg
     Peer selfInfo;
@@ -15,10 +13,10 @@ public class Client {
     ClientState state;
 
     public Client(String id) {
-        log(Config.getString(), id);
-
         state = new ClientState();
         state.loadPeerInfo();
+
+        //state.log(Config.getString());
 
         //search peer list to find self by id
         for(int i = 0; i < state.getPeers().size(); i++) {
@@ -54,23 +52,21 @@ public class Client {
                     new PeerHandler(peer, state).start();
                     break;
                 } catch (IOException e) {
-                    Log.log("Peer " + selfInfo.getPeerID() + " failed to connect to peer " + peer.getPeerID(),
-                            selfInfo.getPeerID());
+                    state.log("Peer " + selfInfo.getPeerID() + " failed to connect to peer " + peer.getPeerID());
                 }
             }
         }
 
         // Listen for peers
         int port = Config.PORT_OFFSET + Integer.parseInt(selfInfo.getPeerID());
-        Log.log("Listening for peers on port " + port, selfInfo.getPeerID());
+        state.log("Listening for peers on port " + port);
         //noinspection InfiniteLoopStatement
         while(true) {
             try (ServerSocket listener = new ServerSocket(port)) {
                 new PeerHandler(listener.accept(), state).start();
-                Log.log("Peer " + selfInfo.getPeerID() + " has received new connection attempt ",
-                        selfInfo.getPeerID());
+                state.log("Peer " + selfInfo.getPeerID() + " has received new connection attempt ");
             } catch (IOException e) {
-                Log.log("Connection with peer terminated", selfInfo.getPeerID());
+                state.log("Connection with peer terminated");
                 throw new RuntimeException(e);
             }
         }

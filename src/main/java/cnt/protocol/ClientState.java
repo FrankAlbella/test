@@ -15,8 +15,11 @@ public class ClientState {
 
     private boolean hasDownloadStarted = false;
 
+    private final Log log;
+
     public ClientState() {
         fileContents = new byte[Config.getFileSize()];
+        log = new Log();
     }
 
     public byte[] getFileContents() {
@@ -40,10 +43,10 @@ public class ClientState {
     public boolean saveFile() {
         String path = selfInfo.getPeerID() + "/" + Config.getFileName();
         try (FileOutputStream outputStream = new FileOutputStream(path)) {
-            Log.log("File saved to " + path, selfInfo.getPeerID());
+            this.log("File saved to " + path);
             outputStream.write(fileContents);
         } catch (IOException e) {
-            Log.log("Failed to save file " + path + ": " + e.getMessage(), selfInfo.getPeerID());
+            this.log("Failed to save file " + path + ": " + e.getMessage());
             return false;
         }
 
@@ -71,6 +74,10 @@ public class ClientState {
             System.err.println("PeerInfo.cfg not found！");
             System.exit(2);
         }
+    }
+
+    public void log(String msg) {
+        log.log(msg, getSelfInfo().getPeerID());
     }
 
     public Peer getSelfInfo() { return selfInfo; }

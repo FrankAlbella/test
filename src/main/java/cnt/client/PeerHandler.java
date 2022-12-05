@@ -12,8 +12,6 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import static src.main.java.cnt.protocol.Log.log;
-
 public class PeerHandler extends Thread {
     Socket requestSocket;           //socket connect to the server
     ObjectOutputStream out;         //stream write to the socket
@@ -35,8 +33,6 @@ public class PeerHandler extends Thread {
             out = new ObjectOutputStream(socket.getOutputStream()); //stream write to the socket
             out.flush();
             in = new ObjectInputStream(socket.getInputStream()); //stream read from the socket
-
-            //peer.setSocket(socket, peerIn, peerOut);
         } catch (IOException e) {
             System.out.println("ERROR MAKING PEER HANDLER SOCKET");
         }
@@ -49,12 +45,12 @@ public class PeerHandler extends Thread {
             handshakeMessage.createHandshakeMessage(state.getSelfInfo().getPeerID());
             String message = handshakeMessage.getHandshake();
             sendMessage(message);
-            //log(state.getSelfInfo().getPeerID() + " sent handshake", state.getSelfInfo().getPeerID());
+            //state.log(state.getSelfInfo().getPeerID() + " sent handshake", state.getSelfInfo().getPeerID());
 
             // Get handshake from server (or peer), no need to validate
             String MESSAGE = (String) in.readObject();
             //handshakeMessage.validateHandshake(MESSAGE, message);
-            //log(MESSAGE, state.getSelfInfo().getPeerID());
+            //state.log(MESSAGE, state.getSelfInfo().getPeerID());
 
             // Remote peer is null because they connected to us, rather than us connect to them
             if(remoteInfo == null) {
@@ -70,13 +66,12 @@ public class PeerHandler extends Thread {
                     throw new RuntimeException("New Peer not in peer list");
             }
 
-            log(String.format("Peer %s makes a connection to peer %s", state.getSelfInfo().getPeerID(), remoteInfo.getPeerID()),
-                state.getSelfInfo().getPeerID());
+            state.log(String.format("Peer %s makes a connection to peer %s", state.getSelfInfo().getPeerID(), remoteInfo.getPeerID()));
 
             // Send bitfield message if it has any
             if (state.hasDownloadStarted()) {
                 sendMessage(new Message(remoteInfo.getBitfield().length, Message.Type.BITFIELD, remoteInfo.getBitfield()));
-                log(in.readObject().toString(), state.getSelfInfo().getPeerID());
+                state.log(in.readObject().toString());
             }
 
             boolean shouldExit = false;
@@ -96,8 +91,7 @@ public class PeerHandler extends Thread {
                     case HAVE:
                         break; //TODO HAVE
                     case BITFIELD:
-                        log("Peer " + state.getSelfInfo().getPeerID() + " has received a bitfield from " + remoteInfo.getPeerID(),
-                                state.getSelfInfo().getPeerID());
+                        state.log("Peer " + state.getSelfInfo().getPeerID() + " has received a bitfield from " + remoteInfo.getPeerID());
                         break; //TODO BITFIELD
                     case REQUEST: {
                         byte[] piece = new byte[Config.getPieceSize() + Config.BYTES_PIECE_SIZE];
@@ -115,7 +109,7 @@ public class PeerHandler extends Thread {
                             piece[i+Config.BYTES_PIECE_SIZE] = state.getFileContents()[i + offset];
 
                         sendMessage(new Message(Config.getPieceSize() + Config.BYTES_PIECE_SIZE, Message.Type.PIECE, piece));
-                        log("Sending piece #" + index, state.getSelfInfo().getPeerID());
+                        state.log("Sending piece #" + index);
                         break;
                     }
                     case PIECE: {
@@ -136,12 +130,12 @@ public class PeerHandler extends Thread {
                     }
 
                     default:
-                        log("Received unsupported message! Exiting...", state.getSelfInfo().getPeerID());
+                        state.log("Received unsupported message! Exiting...");
                         shouldExit = true;
                 }
             }
 
-            log("Transfer finished with peer " + remoteInfo.getPeerID(), state.getSelfInfo().getPeerID());
+            state.log("Transfer finished with peer ");
 
         } catch (ConnectException e) {
             System.err.println("Connection refused. You need to initiate a server first.");

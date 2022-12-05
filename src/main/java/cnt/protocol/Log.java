@@ -55,7 +55,7 @@ public class Log {
     }
 
     //print and log message to file
-    public static void log(String msg, String id) {
+    public void log(String msg, String id) {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy MM dd HH:mm:ss");
         LocalDateTime now = LocalDateTime.now();
         msg = dtf.format(now) + ": " + msg;
