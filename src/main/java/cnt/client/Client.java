@@ -2,12 +2,9 @@ package src.main.java.cnt.client;
 
 import java.net.*;
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.util.*;
 
 import src.main.java.cnt.protocol.*;
 import src.main.java.cnt.server.Peer;
-import src.main.java.cnt.server.Server;
 
 import static src.main.java.cnt.protocol.Log.log;
 
@@ -16,8 +13,6 @@ public class Client {
     Peer selfInfo;
     boolean hasDownloadStarted;
     ClientState state;
-
-    List<Integer> missing = new ArrayList<>();
 
     public Client(String id) {
         log(Config.getString(), id);
@@ -57,11 +52,9 @@ public class Client {
 
                     peer.setSocket(socket, peerIn, peerOut);
                     new PeerHandler(peer, state).start();
-                    Log.log(selfInfo.getPeerID() + " successfully connected to peer " + peer.getPeerID(),
-                            selfInfo.getPeerID());
                     break;
                 } catch (IOException e) {
-                    Log.log(selfInfo.getPeerID() + " failed to connect to peer " + peer.getPeerID(),
+                    Log.log("Peer " + selfInfo.getPeerID() + " failed to connect to peer " + peer.getPeerID(),
                             selfInfo.getPeerID());
                 }
             }
@@ -70,10 +63,11 @@ public class Client {
         // Listen for peers
         int port = Config.PORT_OFFSET + Integer.parseInt(selfInfo.getPeerID());
         Log.log("Listening for peers on port " + port, selfInfo.getPeerID());
+        //noinspection InfiniteLoopStatement
         while(true) {
             try (ServerSocket listener = new ServerSocket(port)) {
                 new PeerHandler(listener.accept(), state).start();
-                Log.log(selfInfo.getPeerID() + " received new connection attempt ",
+                Log.log("Peer " + selfInfo.getPeerID() + " has received new connection attempt ",
                         selfInfo.getPeerID());
             } catch (IOException e) {
                 Log.log("Connection with peer terminated", selfInfo.getPeerID());

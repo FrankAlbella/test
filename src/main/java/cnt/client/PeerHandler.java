@@ -10,7 +10,6 @@ import java.net.ConnectException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import static src.main.java.cnt.protocol.Log.log;
@@ -50,12 +49,12 @@ public class PeerHandler extends Thread {
             handshakeMessage.createHandshakeMessage(state.getSelfInfo().getPeerID());
             String message = handshakeMessage.getHandshake();
             sendMessage(message);
-            log(state.getSelfInfo().getPeerID() + " sent handshake", state.getSelfInfo().getPeerID());
+            //log(state.getSelfInfo().getPeerID() + " sent handshake", state.getSelfInfo().getPeerID());
 
             // Get handshake from server (or peer), no need to validate
             String MESSAGE = (String) in.readObject();
             //handshakeMessage.validateHandshake(MESSAGE, message);
-            log(MESSAGE, state.getSelfInfo().getPeerID());
+            //log(MESSAGE, state.getSelfInfo().getPeerID());
 
             // Remote peer is null because they connected to us, rather than us connect to them
             if(remoteInfo == null) {
@@ -70,6 +69,9 @@ public class PeerHandler extends Thread {
                 if(remoteInfo == null)
                     throw new RuntimeException("New Peer not in peer list");
             }
+
+            log(String.format("Peer %s makes a connection to peer %s", state.getSelfInfo().getPeerID(), remoteInfo.getPeerID()),
+                state.getSelfInfo().getPeerID());
 
             // Send bitfield message if it has any
             if (state.hasDownloadStarted()) {
@@ -94,6 +96,8 @@ public class PeerHandler extends Thread {
                     case HAVE:
                         break; //TODO HAVE
                     case BITFIELD:
+                        log("Peer " + state.getSelfInfo().getPeerID() + " has received a bitfield from " + remoteInfo.getPeerID(),
+                                state.getSelfInfo().getPeerID());
                         break; //TODO BITFIELD
                     case REQUEST: {
                         byte[] piece = new byte[Config.getPieceSize() + Config.BYTES_PIECE_SIZE];
@@ -162,12 +166,10 @@ public class PeerHandler extends Thread {
     }
 
     void sendMessage(String msg) {
-        System.out.println("Sending a message!");
         try {
             //stream write the message
             out.writeObject(msg);
             out.flush();
-            log("Successful sent str message to peer ", state.getSelfInfo().getPeerID());
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
@@ -179,7 +181,6 @@ public class PeerHandler extends Thread {
             //stream write the message
             out.writeObject(msg);
             out.flush();
-            log("Successful sent message object to peer ", state.getSelfInfo().getPeerID());
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
