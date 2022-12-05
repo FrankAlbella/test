@@ -12,6 +12,7 @@ import java.util.Scanner;
 import src.main.java.cnt.server.Peer;
 
 public class Config {
+    // COMMON PROPERTIES
     private static String fileName;
     private static double fileSize;
     private static double pieceSize;
@@ -22,9 +23,10 @@ public class Config {
     private static int unchokingInterval;
     private static int optimisticUnchoke;
 
-    public static final byte BYTES_PIECE_SIZE = 4;
-    public static final byte MAX_CONNECT_ATTEMPTS = 10;
-    public static final int PORT_OFFSET = 35565;
+    // CONSTANTS
+    public static final byte BYTES_PIECE_SIZE = 4;      // Defines the number of bytes needed to give piece index
+    public static final byte MAX_CONNECT_ATTEMPTS = 10; // Max attempts to reconnect to a peer before giving up
+    public static final int PORT_OFFSET = 35565;        // Add this number to port number or peer id to create unique port number
 
     public static void loadCommon() {
         // read the common.cfg file and set variables

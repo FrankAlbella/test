@@ -13,6 +13,8 @@ public class Client {
     ClientState state;
 
     public Client(String id) {
+        // state holds information particular to this client instance
+        // so that the handlers can access the information without needing to copy it
         state = new ClientState();
         state.loadPeerInfo();
 
@@ -41,7 +43,7 @@ public class Client {
         for (Peer peer : state.getPeers()) {
             for(int i = 0; i < Config.MAX_CONNECT_ATTEMPTS; i++) {
                 try {
-                    // TODO change "localhost" to real hostname
+                    // TODO change "localhost" to real hostname for final submission
                     int peerPort = Config.PORT_OFFSET + Integer.parseInt(peer.getPeerID());
                     Socket socket = new Socket("localhost", peerPort);
                     ObjectOutputStream peerOut = new ObjectOutputStream(socket.getOutputStream()); //stream write to the socket
@@ -58,6 +60,7 @@ public class Client {
         }
 
         // Listen for peers
+        // Port uses ID instead of peer port because they all have the same port in the file, so they conflict
         int port = Config.PORT_OFFSET + Integer.parseInt(selfInfo.getPeerID());
         state.log("Listening for peers on port " + port);
         //noinspection InfiniteLoopStatement
@@ -87,7 +90,6 @@ public class Client {
         System.out.println("Running the client: " + args[0]);
         Client client = new Client(args[0]);
         client.run();
-
     }
 
 }

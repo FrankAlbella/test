@@ -28,7 +28,8 @@ public class ClientState {
         }
     }
 
-    //load full file into memory to share
+    // Load full file into memory to share
+    // Should only be used at the start if the client is set to have the full file
     public void loadFile() {
         File dir = new File(selfInfo.getPeerID());
         String filePath = selfInfo.getPeerID() + "/" + Objects.requireNonNull(dir.list())[0];
@@ -40,6 +41,7 @@ public class ClientState {
         }
     }
 
+    // Saves a file to the local directory corresponding to the given peerID
     public boolean saveFile() {
         String path = selfInfo.getPeerID() + "/" + Config.getFileName();
         try (FileOutputStream outputStream = new FileOutputStream(path)) {
@@ -53,6 +55,7 @@ public class ClientState {
         return true;
     }
 
+    // Reads and parses the PeerInfo.cfg file, saving it to the local peers accessible via getPeers()
     public void loadPeerInfo() {
         System.out.println("Reading PeerInfo.cfg...");
 
@@ -76,6 +79,7 @@ public class ClientState {
         }
     }
 
+    // Calls log with the peerID filled out
     public void log(String msg) {
         log.log(msg, getSelfInfo().getPeerID());
     }

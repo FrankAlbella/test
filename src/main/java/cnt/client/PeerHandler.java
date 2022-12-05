@@ -76,6 +76,7 @@ public class PeerHandler extends Thread {
 
             boolean shouldExit = false;
 
+            // Infinitely loop until client want to terminate (not interested?)
             while(!shouldExit) {
                 Message msgObj = (Message) in.readObject();
 
