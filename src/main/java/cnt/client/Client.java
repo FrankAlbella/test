@@ -2,193 +2,81 @@ package src.main.java.cnt.client;
 
 import java.net.*;
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.zip.GZIPInputStream;
 
-import src.main.java.cnt.protocol.Config;
-import src.main.java.cnt.protocol.Handshake;
-import src.main.java.cnt.protocol.Message;
+import src.main.java.cnt.protocol.*;
+import src.main.java.cnt.server.Peer;
 
 public class Client {
-    Socket requestSocket;           //socket connect to the server
-    ObjectOutputStream out;         //stream write to the socket
-    ObjectInputStream in;          //stream read from the socket
-    String id;
-
     // From common.cfg
-    Config config;
-    byte[] bitfield;
-
-    boolean hasFile;
+    Peer selfInfo;
     boolean hasDownloadStarted;
-    byte[] fileContents;
+    ClientState state;
 
-    Handshake handshakeMessage = new Handshake();
+    public Client(String id) {
+        // state holds information particular to this client instance
+        // so that the handlers can access the information without needing to copy it
+        state = new ClientState();
+        state.loadPeerInfo();
 
-    final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
-    private ArrayList<String> clientList = new ArrayList<String>();
+        //state.log(Config.getString());
 
-    public Client(String id, boolean hasFile) {
-        this.id = id;
-        config = new Config();
-        config.loadCommon();
-        this.hasFile = hasFile;
-        this.hasDownloadStarted = hasFile;
-        bitfield = new byte[config.getBitfieldLength()];
-        fileContents = new byte[config.getFileSize()];
+        //search peer list to find self by id
+        for(int i = 0; i < state.getPeers().size(); i++) {
+            if (state.getPeers().get(i).getPeerID().equals(id)) {
+                this.selfInfo = state.getPeers().get(i);
+                state.getPeers().remove(i); //remove self from peer list
+                break;
+            }
+        }
 
-        log(config.toString());
+        state.setSelfInfo(this.selfInfo);
 
-        if(hasFile) {
-            loadFile();
-            for (int i = 0; i < config.getBitfieldLength(); i++)
-                bitfield[i] = 127;
+        //if the file has already been downloaded (all bits in the bitfield are non-zero)
+        if(this.selfInfo.getBitfield()[0] != 0) {
+            this.hasDownloadStarted = true;
+            state.loadFile();
         }
     }
 
     void run() {
-        try {
-            //create a socket to connect to the server
-            requestSocket = new Socket("localhost", 8000);
-            System.out.println("Connected to localhost in port 8000");
-            //initialize inputStream and outputStream
-            out = new ObjectOutputStream(requestSocket.getOutputStream());
-            out.flush();
-            in = new ObjectInputStream(requestSocket.getInputStream());
+        // Attempt to connect to other peers
+        for (Peer peer : state.getPeers()) {
+            for(int i = 0; i < Config.MAX_CONNECT_ATTEMPTS; i++) {
+                try {
+                    // TODO change "localhost" to real hostname for final submission
+                    int peerPort = Config.PORT_OFFSET + Integer.parseInt(peer.getPeerID());
+                    Socket socket = new Socket("localhost", peerPort);
+                    ObjectOutputStream peerOut = new ObjectOutputStream(socket.getOutputStream()); //stream write to the socket
+                    peerOut.flush();
+                    ObjectInputStream peerIn = new ObjectInputStream(socket.getInputStream()); //stream read from the socket
 
-            //get Input from standard input
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
-
-            // create handshake message and send to server
-            handshakeMessage.createHandshakeMessage(id);
-            String message = handshakeMessage.getHandshake();
-            sendMessage(message);
-
-            // Get handshake from server (or peer), and validate it
-            String MESSAGE = (String) in.readObject();
-            handshakeMessage.validateHandshake(MESSAGE, message);
-            log(MESSAGE);
-
-            // Various tests
-            sendMessage(new Message(1, Message.Type.CHOKE, null));
-            log(((Message)in.readObject()).toString());
-
-            sendMessage(new Message(1, Message.Type.UNCHOKE, null));
-            log(((Message)in.readObject()).toString());
-
-            sendMessage(new Message(1, Message.Type.INTERESTED, null));
-            log(((Message)in.readObject()).toString());
-
-            sendMessage(new Message(1, Message.Type.NOT_INTERESTED, null));
-            log(((Message)in.readObject()).toString());
-
-            sendMessage(new Message(5, Message.Type.HAVE, new byte[]{0, 2, 3, 4}));
-            log(((Message)in.readObject()).toString());
-
-            // Send bitfield message if it has any
-            if (hasDownloadStarted) {
-                sendMessage(new Message(bitfield.length, Message.Type.BITFIELD, bitfield));
-                log(((Message)in.readObject()).toString());
-
-                while(true) {
-                    Message msgObj = (Message) in.readObject();
-
-                    if(msgObj.getType() != Message.Type.REQUEST)
-                        break;
-
-                    byte[] piece = new byte[config.getPieceSize()];
-
-                    ByteBuffer wrapped = ByteBuffer.wrap(msgObj.getPayload()); // big-endian by default
-                    int index = wrapped.getInt();
-                    int offset = index * config.getPieceSize();
-
-                    for(int i = 0; (i < config.getPieceSize()) && (i+offset < fileContents.length); i++)
-                        piece[i] = fileContents[i + offset];
-
-                    sendMessage(new Message(config.getPieceSize(), Message.Type.PIECE, piece));
-                    log("Sending piece #" + index);
+                    peer.setSocket(socket, peerIn, peerOut);
+                    new PeerHandler(peer, state).start();
+                    break;
+                } catch (IOException e) {
+                    state.log("Peer " + selfInfo.getPeerID() + " failed to connect to peer " + peer.getPeerID());
                 }
-
-                log("TRANSFER FINISHED");
-            }
-        } catch (ConnectException e) {
-            System.err.println("Connection refused. You need to initiate a server first.");
-        } catch (ClassNotFoundException e) {
-            System.err.println("Class not found");
-        } catch (UnknownHostException unknownHost) {
-            System.err.println("You are trying to connect to an unknown host!");
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-        } catch (Exception e) {
-            System.err.println(e.getMessage());
-        } finally {
-            //Close connections
-            try {
-                in.close();
-                out.close();
-                requestSocket.close();
-            } catch (IOException ioException) {
-                ioException.printStackTrace();
             }
         }
-    }
 
-    //send a message to the output stream, used for handshake
-    void sendMessage(String msg) {
-        try {
-            //stream write the message
-            out.writeObject(msg);
-            out.flush();
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-        }
-    }
-
-    //send a message using the message object
-    void sendMessage(Message msg) {
-        try {
-            //stream write the message
-            out.writeObject(msg);
-            out.flush();
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-        }
-    }
-
-    //print and log message to file
-    void log(String msg) {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy MM dd HH:mm:ss");
-        LocalDateTime now = LocalDateTime.now();
-        msg = dtf.format(now) + ": " + msg;
-        try (FileWriter fw = new FileWriter("log_peer_" + id + ".log", true)) {
-            fw.write(msg + '\n');
-            System.out.println(msg);
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-            System.exit(2);
-        }
-    }
-
-    //load full file into memory to share
-    void loadFile() {
-        File dir = new File(id);
-        String filePath = id + "/" + Objects.requireNonNull(dir.list())[0];
-        try (FileInputStream fs = new FileInputStream(filePath)){
-            fs.read(fileContents);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        // Listen for peers
+        // Port uses ID instead of peer port because they all have the same port in the file, so they conflict
+        int port = Config.PORT_OFFSET + Integer.parseInt(selfInfo.getPeerID());
+        state.log("Listening for peers on port " + port);
+        //noinspection InfiniteLoopStatement
+        while(true) {
+            try (ServerSocket listener = new ServerSocket(port)) {
+                new PeerHandler(listener.accept(), state).start();
+                state.log("Peer " + selfInfo.getPeerID() + " has received new connection attempt ");
+            } catch (IOException e) {
+                state.log("Connection with peer terminated");
+                throw new RuntimeException(e);
+            }
         }
     }
 
     //main method
-    public static void main(String args[]) {
+    public static void main(String[] args) {
         if (args.length == 0) {
             System.err.println("Must be supplied ID as argument.");
             System.exit(1);
@@ -197,15 +85,11 @@ public class Client {
             System.exit(1);
         }
 
-        boolean hasFile = false;
-        if (args.length > 1 && Objects.equals(args[1], "1")) {
-            hasFile = true;
-        }
+        Config.loadCommon();
 
         System.out.println("Running the client: " + args[0]);
-        Client client = new Client(args[0], hasFile);
+        Client client = new Client(args[0]);
         client.run();
-
     }
 
 }

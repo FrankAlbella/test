@@ -51,6 +51,8 @@ public class Server {
 
         public void run() {
             try {
+                List<Integer> missing = new ArrayList<>();
+
                 //initialize Input and Output streams
                 out = new ObjectOutputStream(connection.getOutputStream());
                 out.flush();
@@ -62,7 +64,7 @@ public class Server {
                     //receive the message sent from the client, check if handshake
                     serverReceiveHandshake((String) in.readObject()); // receive handshake once
                     while (true) {
-                        //receieve message from client
+                        //receive message from client
                         //then send the same message back (debugging)
                         Message message = (Message) in.readObject();
                         message.print();
@@ -75,34 +77,12 @@ public class Server {
 
                         //bitfield means it has pieces to send
                         if(message.getType().equals(Message.Type.BITFIELD)) {
-                            List<Integer> missing = new ArrayList<>();
                             byte[] clientBitfield = message.getPayload();
                             byte[] fileContents = new byte[config.getFileSize()];
-
                             //mark all pieces as missing
                             for (int i = 0; i < clientBitfield.length; i++) {
                                 missing.add(i);
                             }
-
-                            /*
-                            for (int i = 0 ; i < missing.size(); i++) {
-                                int index = missing.get(i);
-                                byte[] byteIndex = ByteBuffer.allocate(4).putInt(index).array();
-                                sendMessage(new Message(5, Message.Type.REQUEST, byteIndex));
-
-                                message = (Message) in.readObject();
-
-                                if(message.getType() != Message.Type.PIECE) {
-                                    System.out.println("EXPECTED PIECE MESSAGE");
-                                    break;
-                                }
-
-                                int offset = index * config.getPieceSize();
-                                for (int j = 0; (j < message.getPayload().length) && (i+offset < fileContents.length); j++) {
-                                    fileContents[i+offset] = message.getPayload()[i];
-                                }
-                            }
-                             */
 
                             while(missing.size() != 0) {
                                 //request a random piece
@@ -118,12 +98,21 @@ public class Server {
                                     break;
                                 }
 
+                                final byte BYTES_PIECE_SIZE = 4;
+
+                                int expect = index;
+
+                                ByteBuffer wrapped = ByteBuffer.wrap(Arrays.copyOfRange(message.getPayload(), 0, BYTES_PIECE_SIZE));
+                                index = wrapped.getInt();
+
+                                assert(expect == index);
+
                                 int offset = index * config.getPieceSize();
-                                for (int i = 0; (i < message.getPayload().length) && (i+offset < fileContents.length); i++) {
-                                    fileContents[i+offset] = message.getPayload()[i];
+                                for (int i = 0; (i < message.getPayload().length - BYTES_PIECE_SIZE) && (i+offset < fileContents.length); i++) {
+                                    fileContents[i+offset] = message.getPayload()[i+BYTES_PIECE_SIZE];
                                 }
 
-                                missing.remove(rand);
+                                missing.remove(Integer.valueOf(index));
                             }
 
                             sendMessage(new Message(1, Message.Type.NOT_INTERESTED, null));

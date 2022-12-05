@@ -1,6 +1,8 @@
 package src.main.java.cnt.protocol;
 import java.io.*;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 public class Log {
@@ -50,5 +52,19 @@ public class Log {
         String log = "[" + dateFormat.format(date) + "]: Peer " + peerID1 + " " + message + peerID2 + ".\n";
         logWriter.write(log.getBytes());
         System.out.println("Logging Message: " + log);
+    }
+
+    //print and log message to file
+    public void log(String msg, String id) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy MM dd HH:mm:ss");
+        LocalDateTime now = LocalDateTime.now();
+        msg = dtf.format(now) + ": " + msg;
+        try (FileWriter fw = new FileWriter("log_peer_" + id + ".log", true)) {
+            fw.write(msg + '\n');
+            System.out.println(msg);
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+            System.exit(2);
+        }
     }
 }
