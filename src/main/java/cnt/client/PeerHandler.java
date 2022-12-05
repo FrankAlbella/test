@@ -19,11 +19,8 @@ public class PeerHandler extends Thread {
     Socket requestSocket;           //socket connect to the server
     ObjectOutputStream out;         //stream write to the socket
     ObjectInputStream in;          //stream read from the socket
-    private String handshake = "P2PFILESHARINGPROJ";
-    private ArrayList<String> clientList = new ArrayList<String>();
     Handshake handshakeMessage = new Handshake();
-    Peer remoteInfo;
-    boolean hasDownloadStarted;
+    Peer remoteInfo = null;
     ClientState state;
 
     public PeerHandler(Peer peer, ClientState state) {
@@ -31,15 +28,14 @@ public class PeerHandler extends Thread {
         this.out = peer.getOutStream();
         this.in = peer.getInStream();
         this.remoteInfo = peer;
-        this.hasDownloadStarted = remoteInfo.getBitfield()[0] != 0;
         this.state = state;
     }
     public PeerHandler(Socket socket, ClientState state) {
         try {
             this.requestSocket = socket;
-            ObjectOutputStream peerOut = new ObjectOutputStream(socket.getOutputStream()); //stream write to the socket
-            peerOut.flush();
-            ObjectInputStream peerIn = new ObjectInputStream(socket.getInputStream()); //stream read from the socket
+            out = new ObjectOutputStream(socket.getOutputStream()); //stream write to the socket
+            out.flush();
+            in = new ObjectInputStream(socket.getInputStream()); //stream read from the socket
 
             //peer.setSocket(socket, peerIn, peerOut);
         } catch (IOException e) {
@@ -50,26 +46,33 @@ public class PeerHandler extends Thread {
 
     public void run() {
         try {
-            //create a socket to connect to the server
-            requestSocket = new Socket("localhost", 8000);
-            System.out.println("Connected to localhost in port 8000");
-            //initialize inputStream and outputStream
-            out = new ObjectOutputStream(requestSocket.getOutputStream());
-            out.flush();
-            in = new ObjectInputStream(requestSocket.getInputStream());
-
             // create handshake message and send to server
             handshakeMessage.createHandshakeMessage(state.getSelfInfo().getPeerID());
             String message = handshakeMessage.getHandshake();
             sendMessage(message);
+            log(state.getSelfInfo().getPeerID() + " sent handshake", state.getSelfInfo().getPeerID());
 
-            // Get handshake from server (or peer), and validate it
+            // Get handshake from server (or peer), no need to validate
             String MESSAGE = (String) in.readObject();
-            handshakeMessage.validateHandshake(MESSAGE, message);
-            log(MESSAGE, remoteInfo.getPeerID());
+            //handshakeMessage.validateHandshake(MESSAGE, message);
+            log(MESSAGE, state.getSelfInfo().getPeerID());
+
+            // Remote peer is null because they connected to us, rather than us connect to them
+            if(remoteInfo == null) {
+                // Last 4 char of header should be peerID
+                String peerID = MESSAGE.substring(MESSAGE.length() - 4);
+
+                for (Peer peer : state.getPeers()) {
+                    if (peer.getPeerID().equals(peerID))
+                        remoteInfo = peer;
+                }
+
+                if(remoteInfo == null)
+                    throw new RuntimeException("New Peer not in peer list");
+            }
 
             // Send bitfield message if it has any
-            if (hasDownloadStarted) {
+            if (state.hasDownloadStarted()) {
                 sendMessage(new Message(remoteInfo.getBitfield().length, Message.Type.BITFIELD, remoteInfo.getBitfield()));
                 log(in.readObject().toString(), state.getSelfInfo().getPeerID());
             }
@@ -108,11 +111,11 @@ public class PeerHandler extends Thread {
                             piece[i+Config.BYTES_PIECE_SIZE] = state.getFileContents()[i + offset];
 
                         sendMessage(new Message(Config.getPieceSize() + Config.BYTES_PIECE_SIZE, Message.Type.PIECE, piece));
-                        log("Sending piece #" + index, remoteInfo.getPeerID());
+                        log("Sending piece #" + index, state.getSelfInfo().getPeerID());
                         break;
                     }
                     case PIECE: {
-                        hasDownloadStarted = true;
+                        state.setHasDownloadStarted(true);
 
                         ByteBuffer wrapped = ByteBuffer.wrap(Arrays.copyOfRange(msgObj.getPayload(), 0, Config.BYTES_PIECE_SIZE));
                         int index = wrapped.getInt();
@@ -129,12 +132,12 @@ public class PeerHandler extends Thread {
                     }
 
                     default:
-                        log("Received unsupported message! Exiting...", remoteInfo.getPeerID());
+                        log("Received unsupported message! Exiting...", state.getSelfInfo().getPeerID());
                         shouldExit = true;
                 }
             }
 
-            log("TRANSFER FINISHED", remoteInfo.getPeerID());
+            log("Transfer finished with peer " + remoteInfo.getPeerID(), state.getSelfInfo().getPeerID());
 
         } catch (ConnectException e) {
             System.err.println("Connection refused. You need to initiate a server first.");
@@ -159,10 +162,12 @@ public class PeerHandler extends Thread {
     }
 
     void sendMessage(String msg) {
+        System.out.println("Sending a message!");
         try {
             //stream write the message
             out.writeObject(msg);
             out.flush();
+            log("Successful sent str message to peer ", state.getSelfInfo().getPeerID());
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
@@ -174,6 +179,7 @@ public class PeerHandler extends Thread {
             //stream write the message
             out.writeObject(msg);
             out.flush();
+            log("Successful sent message object to peer ", state.getSelfInfo().getPeerID());
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }

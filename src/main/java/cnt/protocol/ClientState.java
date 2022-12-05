@@ -2,10 +2,7 @@ package src.main.java.cnt.protocol;
 
 import src.main.java.cnt.server.Peer;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -16,9 +13,10 @@ public class ClientState {
     Peer selfInfo;
     private List<Peer> peers;
 
-    public ClientState(Peer peer) {
+    private boolean hasDownloadStarted = false;
+
+    public ClientState() {
         fileContents = new byte[Config.getFileSize()];
-        selfInfo = peer;
     }
 
     public byte[] getFileContents() {
@@ -37,6 +35,19 @@ public class ClientState {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public boolean saveFile() {
+        String path = selfInfo.getPeerID() + "/" + Config.getFileName();
+        try (FileOutputStream outputStream = new FileOutputStream(path)) {
+            Log.log("File saved to " + path, selfInfo.getPeerID());
+            outputStream.write(fileContents);
+        } catch (IOException e) {
+            Log.log("Failed to save file " + path + ": " + e.getMessage(), selfInfo.getPeerID());
+            return false;
+        }
+
+        return true;
     }
 
     public void loadPeerInfo() {
@@ -63,6 +74,11 @@ public class ClientState {
     }
 
     public Peer getSelfInfo() { return selfInfo; }
+    public void setSelfInfo(Peer selfInfo) { this.selfInfo = selfInfo; }
 
     public List<Peer> getPeers() { return peers; }
+
+    public boolean hasDownloadStarted() { return hasDownloadStarted; }
+
+    public void setHasDownloadStarted(boolean hasDownloadStarted) { this.hasDownloadStarted = hasDownloadStarted; }
 }
