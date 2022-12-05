@@ -1,8 +1,14 @@
 package src.main.java.cnt.server;
 
+import src.main.java.cnt.protocol.Config;
+import src.main.java.cnt.protocol.Message;
+
 import java.net.*;
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class Server {
 
@@ -13,9 +19,8 @@ public class Server {
 
     public static void main(String[] args) throws Exception {
         System.out.println("The server is running.");
-        ServerSocket listener = new ServerSocket(sPort);
-        int clientNum = 1;
-        try {
+        try (ServerSocket listener = new ServerSocket(sPort)) {
+            int clientNum = 1;
             while (true) {
                 //handlerPeers.add(new Handler(listener.accept(), clientNum));
                 new Handler(listener.accept(), clientNum).start();
@@ -23,8 +28,6 @@ public class Server {
                 System.out.println("src.main.java.cnt.client.Client " + clientNum + " is connected!");
                 clientNum++;
             }
-        } finally {
-            listener.close();
         }
 
     }
@@ -34,8 +37,6 @@ public class Server {
      * loop and are responsible for dealing with a single client's requests.
      */
     private static class Handler extends Thread {
-        private String message;    //message received from the client
-        private String MESSAGE;    //uppercase message send to the client
         private Socket connection;
         private ObjectInputStream in;    //stream read from the socket
         private ObjectOutputStream out;    //stream write to the socket
@@ -50,19 +51,81 @@ public class Server {
 
         public void run() {
             try {
+                List<Integer> missing = new ArrayList<>();
+
                 //initialize Input and Output streams
                 out = new ObjectOutputStream(connection.getOutputStream());
                 out.flush();
                 in = new ObjectInputStream(connection.getInputStream());
-                try {
-                    while (true) {
-                        //receive the message sent from the client, check if handshake
-                        message = (String) in.readObject();
-                        serverReceiveHandshake(message);
 
+                Config config = new Config();
+                config.loadCommon();
+                try {
+                    //receive the message sent from the client, check if handshake
+                    serverReceiveHandshake((String) in.readObject()); // receive handshake once
+                    while (true) {
+                        //receive message from client
+                        //then send the same message back (debugging)
+                        Message message = (Message) in.readObject();
+                        message.print();
+                        if(message.getPayload() != null)
+                            System.out.println(Arrays.toString(message.getPayload()));
+                        sendMessage(message);
                         // TODO: send peers to server
 
                         // create other if-else statements depending on what client sent
+
+                        //bitfield means it has pieces to send
+                        if(message.getType().equals(Message.Type.BITFIELD)) {
+                            byte[] clientBitfield = message.getPayload();
+                            byte[] fileContents = new byte[config.getFileSize()];
+                            //mark all pieces as missing
+                            for (int i = 0; i < clientBitfield.length; i++) {
+                                missing.add(i);
+                            }
+
+                            while(missing.size() != 0) {
+                                //request a random piece
+                                int rand = (int)(Math.random()*(missing.size()));
+                                int index = missing.get(rand);
+                                byte[] byteIndex = ByteBuffer.allocate(4).putInt(index).array();
+                                sendMessage(new Message(5, Message.Type.REQUEST, byteIndex));
+
+                                message = (Message) in.readObject();
+
+                                if(message.getType() != Message.Type.PIECE) {
+                                    System.out.println("EXPECTED PIECE MESSAGE");
+                                    break;
+                                }
+
+                                final byte BYTES_PIECE_SIZE = 4;
+
+                                int expect = index;
+
+                                ByteBuffer wrapped = ByteBuffer.wrap(Arrays.copyOfRange(message.getPayload(), 0, BYTES_PIECE_SIZE));
+                                index = wrapped.getInt();
+
+                                assert(expect == index);
+
+                                int offset = index * config.getPieceSize();
+                                for (int i = 0; (i < message.getPayload().length - BYTES_PIECE_SIZE) && (i+offset < fileContents.length); i++) {
+                                    fileContents[i+offset] = message.getPayload()[i+BYTES_PIECE_SIZE];
+                                }
+
+                                missing.remove(Integer.valueOf(index));
+                            }
+
+                            sendMessage(new Message(1, Message.Type.NOT_INTERESTED, null));
+
+                            try (FileOutputStream outputStream = new FileOutputStream("output")) {
+                                outputStream.write(fileContents);
+                            }
+
+                            ////for every bit in the byte
+                            //for (byte j = 7; j > 0; j--) {
+                            //  byte bit = (byte) ((clientBitfield[i] >> j) & 1);
+                            //}
+                        }
 
                     }
                 } catch (ClassNotFoundException classnot) {
@@ -85,6 +148,18 @@ public class Server {
         //send a message to the output stream
         public void sendMessage(String msg) {
             try {
+                out.writeObject(msg);
+                out.flush();
+                System.out.println("Send message: " + msg + " to src.main.java.cnt.client.Client " + no);
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+            }
+        }
+
+        //send a message using the message object
+        void sendMessage(Message msg) {
+            try {
+                //stream write the message
                 out.writeObject(msg);
                 out.flush();
                 System.out.println("Send message: " + msg + " to src.main.java.cnt.client.Client " + no);
