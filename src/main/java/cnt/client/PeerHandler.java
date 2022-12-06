@@ -2,6 +2,7 @@ package src.main.java.cnt.client;
 
 import src.main.java.cnt.protocol.*;
 import src.main.java.cnt.server.Peer;
+import src.main.java.cnt.protocol.Config;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -74,6 +75,18 @@ public class PeerHandler extends Thread {
                 state.log(in.readObject().toString());
             }
 
+            System.out.println(state.getSelfInfo().getPeerID() + ": " + state.getSelfInfo().getBitfield());
+            System.out.println(remoteInfo.getPeerID() + ": " + remoteInfo.getBitfield());
+
+            System.out.println("file cons: " + state.getFileContents());
+            System.out.println("does peer have file:  " + state.getSelfInfo().getHasFile());
+            System.out.println("peer bitfield:  " + state.getBitfield().getBitfield().length);
+
+            // if it has the file, send bitfield
+            if(state.getSelfInfo().getHasFile() == 1){
+                sendMessage(new Message(remoteInfo.getBitfield().length, Message.Type.BITFIELD, state.getBitfield().getBitfield()));
+            }
+
             boolean shouldExit = false;
 
             // Infinitely loop until client want to terminate (not interested?)
@@ -92,7 +105,11 @@ public class PeerHandler extends Thread {
                     case HAVE:
                         break; //TODO HAVE
                     case BITFIELD:
+                        // sends if interested or not
+
                         state.log("Peer " + state.getSelfInfo().getPeerID() + " has received a bitfield from " + remoteInfo.getPeerID());
+                        //state.getBitfield().compareBitfields(msgObj.getPayload());
+                        System.out.println("Compare bitfield: " + state.getBitfield().compareBitfields(msgObj.getPayload()));
                         break; //TODO BITFIELD
                     case REQUEST: {
                         byte[] piece = new byte[Config.getPieceSize() + Config.BYTES_PIECE_SIZE];
@@ -179,5 +196,20 @@ public class PeerHandler extends Thread {
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
+    }
+
+    // send handshake
+    void sendHandshake(Handshake handshake) {
+        try {
+            //stream write the message
+            out.writeObject(handshake);
+            out.flush();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+    }
+
+    void createBitfield(){
+
     }
 }

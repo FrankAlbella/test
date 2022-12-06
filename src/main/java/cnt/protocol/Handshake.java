@@ -33,14 +33,14 @@ public class Handshake {
     }
 
     // validates the handshake from the server
-    public void validateHandshake(String serverMessage, String clientHandshake) throws Exception {
-        if(serverMessage.equals(clientHandshake)) {
-            System.out.println("HANDSHAKES MATCH: " + serverMessage);
+    public void validateHandshake(String expectedMessage, String receivedMessage) throws Exception {
+        if(expectedMessage.equals(receivedMessage)) {
+            System.out.println("HANDSHAKES MATCH: " + expectedMessage);
         }
         else {
             System.out.println("HANDSHAKES DO NOT MATCH:");
-            System.out.println("\tExpected: " + clientHandshake);
-            System.out.println("\tReceived: " + serverMessage);
+            System.out.println("\tExpected: " + expectedMessage);
+            System.out.println("\tReceived: " + receivedMessage);
             throw new Exception("Handshake received from server does not match.");
         }
     }
