@@ -75,13 +75,6 @@ public class PeerHandler extends Thread {
                 state.log(in.readObject().toString());
             }
 
-            System.out.println(state.getSelfInfo().getPeerID() + ": " + state.getSelfInfo().getBitfield());
-            System.out.println(remoteInfo.getPeerID() + ": " + remoteInfo.getBitfield());
-
-            System.out.println("file cons: " + state.getFileContents());
-            System.out.println("does peer have file:  " + state.getSelfInfo().getHasFile());
-            System.out.println("peer bitfield:  " + state.getBitfield().getBitfield().length);
-
             // if it has the file, send bitfield
             if(state.getSelfInfo().getHasFile() == 1){
                 sendMessage(new Message(remoteInfo.getBitfield().length, Message.Type.BITFIELD, state.getBitfield().getBitfield()));
@@ -99,17 +92,22 @@ public class PeerHandler extends Thread {
                     case UNCHOKE:
                         break; //TODO UNCHOKE
                     case INTERESTED:
+                        state.log("Peer " + state.getSelfInfo().getPeerID() + " received the 'interested' message from " + remoteInfo.getPeerID());
                         break; //TODO INTERESTED
                     case NOT_INTERESTED:
+                        state.log("Peer " + state.getSelfInfo().getPeerID() + " received the 'not interested' message from " + remoteInfo.getPeerID());
                         break; //TODO NOT INTERESTED
                     case HAVE:
                         break; //TODO HAVE
                     case BITFIELD:
-                        // sends if interested or not
-
                         state.log("Peer " + state.getSelfInfo().getPeerID() + " has received a bitfield from " + remoteInfo.getPeerID());
-                        //state.getBitfield().compareBitfields(msgObj.getPayload());
-                        System.out.println("Compare bitfield: " + state.getBitfield().compareBitfields(msgObj.getPayload()));
+                        // if the bitfield received is the same, not interested msg is sent
+                        if(state.getBitfield().compareBitfields(msgObj.getPayload())){
+                            sendMessage(new Message(3, Message.Type.NOT_INTERESTED, null));
+                        }
+                        else{
+                            sendMessage(new Message(2, Message.Type.INTERESTED, null));
+                        }
                         break; //TODO BITFIELD
                     case REQUEST: {
                         byte[] piece = new byte[Config.getPieceSize() + Config.BYTES_PIECE_SIZE];
