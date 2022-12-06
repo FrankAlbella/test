@@ -16,7 +16,7 @@ public class ClientState {
     private boolean hasDownloadStarted = false;
 
     private final Log log;
-
+    private Bitfield bitfield;
     public ClientState() {
         fileContents = new byte[Config.getFileSize()];
         log = new Log();
@@ -85,11 +85,15 @@ public class ClientState {
     }
 
     public Peer getSelfInfo() { return selfInfo; }
-    public void setSelfInfo(Peer selfInfo) { this.selfInfo = selfInfo; }
+    public void setSelfInfo(Peer selfInfo) {
+        this.selfInfo = selfInfo;
+        bitfield = new Bitfield(selfInfo.getPeerID(), selfInfo.getHasFile());
+    }
 
     public List<Peer> getPeers() { return peers; }
 
     public boolean hasDownloadStarted() { return hasDownloadStarted; }
 
     public void setHasDownloadStarted(boolean hasDownloadStarted) { this.hasDownloadStarted = hasDownloadStarted; }
+    public Bitfield getBitfield(){return bitfield;}
 }
