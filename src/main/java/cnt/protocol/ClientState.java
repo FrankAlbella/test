@@ -16,7 +16,6 @@ public class ClientState {
     private boolean hasDownloadStarted = false;
 
     private final Log log;
-    private Bitfield bitfield;
     public ClientState() {
         fileContents = new byte[Config.getFileSize()];
         log = new Log();
@@ -87,7 +86,6 @@ public class ClientState {
     public Peer getSelfInfo() { return selfInfo; }
     public void setSelfInfo(Peer selfInfo) {
         this.selfInfo = selfInfo;
-        bitfield = new Bitfield(selfInfo.getPeerID(), selfInfo.getHasFile());
     }
 
     public List<Peer> getPeers() { return peers; }
@@ -95,5 +93,14 @@ public class ClientState {
     public boolean hasDownloadStarted() { return hasDownloadStarted; }
 
     public void setHasDownloadStarted(boolean hasDownloadStarted) { this.hasDownloadStarted = hasDownloadStarted; }
-    public Bitfield getBitfield(){return bitfield;}
+    public Bitfield getBitfield(){return selfInfo.getBitfieldObj();}
+    // update the bitfield for the peer
+    public void updatePeerBitfield(String peerID, byte[] peerBitfield){
+        System.out.println(selfInfo.getPeerID() + ": updating peers " + peerID + " bitfield");
+        for(Peer peer : peers){
+            if(peer.getPeerID().compareTo(peerID) == 0){
+                peer.updateBitfieldObj(peerBitfield);
+            }
+        }
+    }
 }

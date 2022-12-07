@@ -93,6 +93,7 @@ public class PeerHandler extends Thread {
                         break; //TODO UNCHOKE
                     case INTERESTED:
                         state.log("Peer " + state.getSelfInfo().getPeerID() + " received the 'interested' message from " + remoteInfo.getPeerID());
+
                         break; //TODO INTERESTED
                     case NOT_INTERESTED:
                         state.log("Peer " + state.getSelfInfo().getPeerID() + " received the 'not interested' message from " + remoteInfo.getPeerID());
@@ -101,6 +102,12 @@ public class PeerHandler extends Thread {
                         break; //TODO HAVE
                     case BITFIELD:
                         state.log("Peer " + state.getSelfInfo().getPeerID() + " has received a bitfield from " + remoteInfo.getPeerID());
+
+                        // update the bitfield of the peer who sent it
+                        if(remoteInfo.getBitfieldObj().compareBitfields(msgObj.getPayload())){
+                            state.updatePeerBitfield(remoteInfo.getPeerID(), msgObj.getPayload());
+                        }
+
                         // if the bitfield received is the same, not interested msg is sent
                         if(state.getBitfield().compareBitfields(msgObj.getPayload())){
                             sendMessage(new Message(3, Message.Type.NOT_INTERESTED, null));

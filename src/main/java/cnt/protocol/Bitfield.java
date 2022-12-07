@@ -3,14 +3,11 @@ import src.main.java.cnt.protocol.Config;
 import java.io.*;
 public class Bitfield {
     private byte[] bitfield;
-    private String bitfieldString;
 
-    Bitfield(String peerID, int hasFile){
-        System.out.println("bitfield constructor");
-        createBitfield(peerID, hasFile);
+    public Bitfield(int hasFile){
+        createBitfield(hasFile);
     }
-    public void createBitfield(String peerID, int hasFile){
-        System.out.println("creating the bitfield");
+    public void createBitfield(int hasFile){
         bitfield = new byte[Config.getBitfieldLength()];
         // create the bitfield
         for(int i = 0; i < Config.getBitfieldLength(); i++){
@@ -22,10 +19,10 @@ public class Bitfield {
             }
         }
     }
+    public void updateBitfield(byte[] updatedBitfield){ bitfield = updatedBitfield; }
 
-    public void updateBitfield(int index){
-        bitfield[index] = 1;
-    }
+    public void updateBitfieldPiece(int index){ bitfield[index] = 1; }
+
 
     public byte[] getBitfield(){return bitfield;}
 
