@@ -96,6 +96,7 @@ public class PeerHandler extends Thread {
                         // get random missing index and turn into byte[]
                         int random = getRandomPieceIndex();
                         byte[] requestIndex = intToByteArray(random);
+                        System.out.println("Random bitfield index: " + random);
                         // send request message if unchoked by peer
                         sendMessage(new Message(4, Message.Type.REQUEST, requestIndex));
                         break;
@@ -106,6 +107,15 @@ public class PeerHandler extends Thread {
                         break;
                     case NOT_INTERESTED:
                         state.log("Peer " + state.getSelfInfo().getPeerID() + " received the 'not interested' message from " + remoteInfo.getPeerID());
+                        // if there is payload, update peer bitfield /// Makes it easy to update list without sending more msgs
+                        if(msgObj.getPayload() != null){
+                            // update in peer list and to current connected peer
+                            state.updatePeerBitfield(remoteInfo.getPeerID(), msgObj.getPayload());
+                            remoteInfo.getBitfieldObj().updateBitfield(msgObj.getPayload());
+                        }
+
+                        // check for termination conditions
+
                         // TODO: End condition: means it has file, should wait for all peers to download all pieces, shuts down connection
                         break; //TODO NOT INTERESTED
                     case HAVE:
@@ -136,8 +146,15 @@ public class PeerHandler extends Thread {
 
                         ArrayList<Integer> indexArray = getPieceIndices(receivedIndex);
 
+                        byte[] piece = getFileContentPiece(indexArray);
+
+                        System.out.println("Random piece #: " + receivedIndex + " " + piece.length);
+
+                        // send lower bound as the startIndex for the file contents
+                        sendMessage(new Message(indexArray.get(0), Message.Type.PIECE, piece));
                         //TODO: use indexArr = [lower, upper, length] to get info about piece and send piece message containing file piece
 
+                        // Frank's previous code for request
                         // TODO: SEND PIECE BACK TO CLIENT THAT REQUESTED
                         /*byte[] piece = new byte[Config.getPieceSize() + Config.BYTES_PIECE_SIZE];
 
@@ -158,6 +175,37 @@ public class PeerHandler extends Thread {
                         break;
                     }
                     case PIECE: {
+                        state.log("Peer " + state.getSelfInfo().getPeerID() + " received the 'request' message from " + remoteInfo.getPeerID());
+
+                        // msg.length is actually the startIndex for FileContent byte[]
+                        copyFileContentFromPiece(msgObj.getLength(), msgObj.getPayload());
+                        updateBitfieldAfterPiece(msgObj.getLength());
+
+                        // determine if all pieces have been downloaded
+                        if(state.getBitfield().compareBitfields(remoteInfo.getBitfieldObj().getBitfield())){
+                            // terminates downloading: send 'not interested' and bitfield
+                            sendMessage(new Message(3, Message.Type.NOT_INTERESTED, state.getBitfield().getBitfield()));
+                        }
+                        else {
+                            // FIX: should be sending another request to peer1001 for another random piece
+                            // should make another request however it is not working
+                            // socket is closing somewhere, also IOException on line
+                            /*
+                            System.out.println("in piece ");
+                            // get random missing index and turn into byte[]
+                            int rand = getRandomPieceIndex();
+                            byte[] reqIndex = intToByteArray(rand);
+                            System.out.println("Random bitfield index: " + rand);
+                            // send request message if unchoked by peer
+                            sendMessage(new Message(4, Message.Type.REQUEST, reqIndex));
+                             */
+                            sendMessage(new Message(2, Message.Type.INTERESTED, null));
+
+                        }
+
+
+                        // Frank's previous code for PIECE
+                        /*
                         // TODO: GET PIECE AND UPDATE BITFIELD: not done
                         state.setHasDownloadStarted(true);
 
@@ -169,9 +217,9 @@ public class PeerHandler extends Thread {
                         for (int i = 0; (i < msgObj.getPayload().length - Config.BYTES_PIECE_SIZE) && (i+offset < state.getFileContents().length); i++) {
                             state.getFileContents()[i+offset] = msgObj.getPayload()[i+Config.BYTES_PIECE_SIZE];
                         }
+                         */
 
                         // TODO update bitfield
-
                         //missing.remove(Integer.valueOf(index));
                     }
 
@@ -282,6 +330,28 @@ public class PeerHandler extends Thread {
         return indices;
     }
 
+    byte[] getFileContentPiece(ArrayList<Integer> indices){
+        byte[] piece = new byte[indices.get(2)];
+        int indexStart = indices.get(0);
+        for(int i = 0; i < indices.get(2); i++){
+            piece[i] = state.getFileContents()[indexStart++];
+        }
+        return piece;
+    }
+
+    void copyFileContentFromPiece(int startIndex, byte[] piece){
+        int pieceIndex = 0;
+        for(int i = startIndex; i < startIndex + piece.length; i++){
+            state.getFileContents()[i] = piece[pieceIndex++];
+        }
+    }
+
+    void updateBitfieldAfterPiece(int startIndex){
+        int bitfieldIndex = startIndex / Config.getPieceSize();
+        System.out.println("Bitfield index requested: " + bitfieldIndex);
+        state.getBitfield().updateBitfieldPiece(bitfieldIndex);
+
+    }
     void createBitfield(){
 
     }
