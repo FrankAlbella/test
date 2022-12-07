@@ -96,11 +96,20 @@ public class ClientState {
     public Bitfield getBitfield(){return selfInfo.getBitfieldObj();}
     // update the bitfield for the peer
     public void updatePeerBitfield(String peerID, byte[] peerBitfield){
-        System.out.println(selfInfo.getPeerID() + ": updating peers " + peerID + " bitfield");
         for(Peer peer : peers){
             if(peer.getPeerID().compareTo(peerID) == 0){
                 peer.updateBitfieldObj(peerBitfield);
             }
         }
+    }
+
+    public byte[] getPeerBitfield(String peerID){
+        System.out.println(selfInfo.getPeerID() + ": getting peers " + peerID + " bitfield");
+        for(Peer peer : peers){
+            if(peer.getPeerID().compareTo(peerID) == 0){
+                return peer.getBitfieldObj().getBitfield();
+            }
+        }
+        return null;
     }
 }
