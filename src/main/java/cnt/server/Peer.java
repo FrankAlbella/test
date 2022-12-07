@@ -1,5 +1,6 @@
 package src.main.java.cnt.server;
 
+import src.main.java.cnt.protocol.Bitfield;
 import src.main.java.cnt.protocol.Config;
 
 import java.io.ObjectInputStream;
@@ -18,6 +19,7 @@ public class Peer {
     Socket socket;
     ObjectOutputStream out; //stream write to the socket
     ObjectInputStream in; //stream read from the socket
+    Bitfield bitfieldObj;
 
 
     public String getPeerID() { return peerID; }
@@ -25,6 +27,8 @@ public class Peer {
     public int getHasFile() { return hasFile; }
     public int getPortNumber() { return portNumber; }
     public byte[] getBitfield() { return bitfield; }
+    public Bitfield getBitfieldObj() { return bitfieldObj; }
+    public void updateBitfieldObj(byte[] updatedBitfield){ bitfieldObj.updateBitfield(updatedBitfield);}
     public Socket getSocket() { return socket; }
     public ObjectOutputStream getOutStream() { return out; }
     public ObjectInputStream getInStream() { return in; }
@@ -35,6 +39,7 @@ public class Peer {
         this.portNumber = portNumber;
         this.bitfield = new byte[Config.getBitfieldLength()];
         this.hasFile = hasFile;
+        this.bitfieldObj = new Bitfield(hasFile);
 
         if(hasFile == 1)
             for (int i = 0; i < Config.getBitfieldLength(); i++)
