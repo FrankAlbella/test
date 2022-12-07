@@ -1,4 +1,4 @@
-package BitTorrent.src.main.java.cnt.protocol;
+package src.main.java.cnt.protocol;
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
@@ -19,7 +19,7 @@ public class Log {
     // creates file if logWriter is null
     public void createFile(String peerID1) throws Exception {
         if(logWriter == null){
-            peerLogDir = "log_peer_"+ peerID1 + ".log";
+            peerLogDir = peerID1 + "/log_peer_"+ peerID1 + ".log";
             peerLog = new File(peerLogDir);
             peerLog.delete();
             logWriter = new FileOutputStream(peerLog, true);
@@ -59,7 +59,7 @@ public class Log {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy MM dd HH:mm:ss");
         LocalDateTime now = LocalDateTime.now();
         msg = dtf.format(now) + ": " + msg;
-        try (FileWriter fw = new FileWriter("log_peer_" + id + ".log", true)) {
+        try (FileWriter fw = new FileWriter(id + "/log_peer_" + id + ".log", true)) {
             fw.write(msg + '\n');
             System.out.println(msg);
         } catch (IOException ioException) {

@@ -1,4 +1,4 @@
-package BitTorrent.src.main.java.cnt.protocol;
+package src.main.java.cnt.protocol;
 
 public class Handshake {
     final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
